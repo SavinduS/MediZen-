@@ -4,3 +4,12 @@ dist/
 build/
 .DS_Store
 *.log
+services/doctor-service/.env
+services/appointment-service/.env
+services/telemedicine-service/.env
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+Thumbs.db

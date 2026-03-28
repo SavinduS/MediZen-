@@ -1,0 +1,21 @@
+/**
+ * Doctor Management Routes
+ */
+
+const express = require('express');
+const router = express.Router();
+const doctorController = require('../controllers/doctorController');
+
+// --- DOCTOR PROFILE ROUTES ---
+router.post('/', doctorController.createDoctorProfile); // Create Profile
+router.get('/', doctorController.getAllDoctors);       // Search Doctors
+
+// --- AVAILABILITY ROUTES ---
+
+// PUT /api/doctors/:id/availability - Set weekly slots
+router.put('/:id/availability', doctorController.updateAvailability);
+
+// GET /api/doctors/:id/availability - View specific doctor slots
+router.get('/:id/availability', doctorController.getDoctorAvailability);
+
+module.exports = router;
