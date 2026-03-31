@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: symptom-checker
+spec:
+  replicas: 2 
+  selector:
+    matchLabels:
+      app: symptom-checker
+  template:
+    metadata:
+      labels:
+        app: symptom-checker
+    spec:
+      containers:
+      - name: symptom-checker
+        image: savindus/medizen-ai-service:latest 
+        ports:
+        - containerPort: 5005
+        env:
+        - name: MONGO_URI
+          value: "mongodb://mongodb-ai-service:27017/symptom_db" 
+        - name: GEMINI_API_KEY
+          value: "AIzaSyCp6LThGCa3BBhsRK2Z1aQGhr9129waE-w" 
