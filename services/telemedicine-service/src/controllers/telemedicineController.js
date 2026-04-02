@@ -1,40 +1,38 @@
 /**
- * Telemedicine Controller
- * Generates Agora tokens for secure real-time video consultations.
+ * Telemedicine Controller - Fixed with Upsert Logic
  */
-
 const { RtcTokenBuilder, RtcRole } = require('agora-token');
 const Session = require('../models/Session');
 
-// @desc    Generate Video Token and Create Session
-// @route   POST /api/sessions/token
 exports.generateToken = async (req, res) => {
     try {
         const { appointmentId } = req.body;
-
-        // Configuration from .env
         const appId = process.env.AGORA_APP_ID;
         const appCertificate = process.env.AGORA_APP_CERTIFICATE;
-        const channelName = appointmentId; // Using appointment ID as the room name
-        const uid = 0; // Standard UID for Agora
-        const role = RtcRole.PUBLISHER; // Participant role
-        
-        // Token expiry: 1 Hour (3600 seconds)
+        const channelName = appointmentId;
+        const uid = 0;
+        const role = RtcRole.PUBLISHER;
         const expirationTimeInSeconds = 3600;
         const privilegeExpireTime = Math.floor(Date.now() / 1000) + expirationTimeInSeconds;
 
-        // Build the token using Agora SDK
+        // Generate Token
         const token = RtcTokenBuilder.buildTokenWithUid(
             appId, appCertificate, channelName, uid, role, privilegeExpireTime
         );
 
-        // Save session metadata to DB
-        const newSession = new Session({
-            appointmentId,
-            channelName,
-            token
-        });
-        await newSession.save();
+        // --- FIXED LOGIC: Find existing or Create new ---
+        // This prevents the "E11000 duplicate key error"
+        const session = await Session.findOneAndUpdate(
+            { appointmentId }, // Search criteria
+            { 
+                channelName, 
+                token, 
+                startedAt: new Date() 
+            }, // Data to update
+            { upsert: true, new: true } // Create if doesn't exist, return the updated document
+        );
+
+        console.log(`✅ Token Generated for Appointment: ${appointmentId}`);
 
         return res.status(201).json({
             token,
@@ -43,10 +41,11 @@ exports.generateToken = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Token Generation Error:', error.message);
-        res.status(500).json({ message: 'Failed to generate video session token' });
+        console.error('❌ Token Generation Error:', error.message);
+        res.status(500).json({ message: 'Failed to generate token' });
     }
 };
+
 // @desc    End a video session
 // @route   POST /api/sessions/:id/end
 exports.endSession = async (req, res) => {

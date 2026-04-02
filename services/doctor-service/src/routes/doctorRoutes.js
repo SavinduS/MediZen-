@@ -18,4 +18,7 @@ router.put('/:id/availability', doctorController.updateAvailability);
 // GET /api/doctors/:id/availability - View specific doctor slots
 router.get('/:id/availability', doctorController.getDoctorAvailability);
 
+// POST /api/doctors/prescriptions - Doctor issues a prescription
+router.post('/prescriptions', doctorController.issuePrescription);
+
 module.exports = router;

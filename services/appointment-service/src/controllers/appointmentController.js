@@ -1,76 +1,93 @@
 /**
- * Appointment Controller
- * Handles logic for booking, conflict detection, and status management.
+ * Appointment Controller - Final Version
  */
-
 const Appointment = require('../models/Appointment');
-const { v4: uuidv4 } = require('uuid'); // Install this: npm install uuid
+const { v4: uuidv4 } = require('uuid');
+const { publishNotification } = require('../config/rabbitMQ');
 
 // @desc    Book a new Appointment with Conflict Detection
 // @route   POST /api/appointments
-// @access  Private (Patient)
 exports.bookAppointment = async (req, res) => {
     try {
         const { patientId, doctorId, slotTime } = req.body;
-
-        // 1. Convert slotTime string to Date object for comparison
         const requestedTime = new Date(slotTime);
 
-        // 2. CONFLICT DETECTION Logic: 
-        // Search if any CONFIRMED or PENDING appointment already exists for this doctor at the exact same time
+        // 1. CONFLICT DETECTION Logic
         const existingAppointment = await Appointment.findOne({
-            doctorId: doctorId,
+            doctorId,
             slotTime: requestedTime,
             status: { $in: ['PENDING', 'CONFIRMED'] }
         });
 
         if (existingAppointment) {
-            return res.status(409).json({ 
-                message: 'This time slot is already booked for this doctor. Please choose another time.' 
-            });
+            console.log("❌ Slot Conflict Detected");
+            return res.status(409).json({ message: 'This slot is already booked.' });
         }
 
-        // 3. Create a unique Appointment ID
+        // 2. CREATE AND SAVE RECORD
         const appointmentId = `APT-${uuidv4().slice(0, 8).toUpperCase()}`;
-
-        // 4. Create new appointment record
         const newAppointment = new Appointment({
             appointmentId,
             patientId,
             doctorId,
             slotTime: requestedTime,
-            status: 'PENDING' // Initially pending until payment is confirmed (Member 3 logic)
+            status: 'PENDING'
         });
 
         const savedAppointment = await newAppointment.save();
+        console.log(`✅ [DB] Saved Appointment: ${savedAppointment.appointmentId}`);
 
-        res.status(201).json({
-            message: 'Appointment requested successfully',
+        // 3. PUBLISH TO RABBITMQ
+        const eventData = {
+            type: 'APPOINTMENT_BOOKED',
+            payload: savedAppointment
+        };
+        publishNotification(eventData);
+
+        // 4. RESPONSE
+        return res.status(201).json({
+            message: 'Appointment booked successfully!',
             data: savedAppointment
         });
 
     } catch (error) {
-        console.error('Booking Error:', error.message);
-        res.status(500).json({ message: 'Internal Server Error while booking' });
+        console.error('❌ Controller Error:', error.message);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 };
 
-// @desc    Update Appointment Status (Confirm/Cancel/Complete)
-// @route   PUT /api/appointments/:id
-// @access  Private (Doctor/Admin)
+// @desc    Update Appointment Status
 exports.updateAppointmentStatus = async (req, res) => {
     try {
         const { status } = req.body;
         const { id } = req.params;
 
-        const updatedAppointment = await Appointment.findByIdAndUpdate(
-            id,
-            { status },
-            { new: true }
-        );
-
-        res.status(200).json({ message: 'Status updated', data: updatedAppointment });
+        const updated = await Appointment.findByIdAndUpdate(id, { status }, { new: true });
+        
+        if (!updated) return res.status(404).json({ message: 'Not found' });
+        
+        console.log(`✅ [DB] Status Updated: ${status}`);
+        res.status(200).json({ data: updated });
     } catch (error) {
-        res.status(500).json({ message: 'Error updating status' });
+        res.status(500).json({ message: 'Failed to update status' });
+    }
+};
+
+/**
+ * @desc    Get all appointments for a specific patient (History)
+ * @route   GET /api/appointments/patient/:patientId
+ */
+exports.getPatientAppointments = async (req, res) => {
+    try {
+        const { patientId } = req.params; // Get ID from URL parameter
+
+        // Find appointments and sort them by time (newest first)
+        const appointments = await Appointment.find({ patientId }).sort({ slotTime: -1 });
+
+        // If found, return the list
+        res.status(200).json(appointments);
+    } catch (error) {
+        console.error('❌ Fetch History Error:', error.message);
+        res.status(500).json({ message: 'Error fetching patient history' });
     }
 };

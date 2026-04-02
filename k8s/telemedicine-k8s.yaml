@@ -1,0 +1,38 @@
+# Deployment: Handles the pods for Telemedicine (Video) Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemedicine-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telemedicine-service
+  template:
+    metadata:
+      labels:
+        app: telemedicine-service
+    spec:
+      containers:
+      - name: telemedicine-service
+        image: medizen-telemedicine-service:latest
+        ports:
+        - containerPort: 5006
+        envFrom:
+        - configMapRef:
+            name: telemedicine-config # Environment variables set through ConfigMap
+
+---
+# Service: Internal network access for Telemedicine Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemedicine-service
+spec:
+  selector:
+    app: telemedicine-service
+  ports:
+    - protocol: TCP
+      port: 5006
+      targetPort: 5006
+  type: ClusterIP
