@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB User Schema
+// MongoDB User Schema....
 const userSchema = new mongoose.Schema({
   clerkId: { type: String, required: true, unique: true },
   email: { type: String, required: true },
@@ -37,7 +37,7 @@ app.post("/api/auth/sync", ClerkExpressWithAuth(), async (req, res) => {
     // 1. Check if user exists in our DB
     let user = await User.findOne({ clerkId: userId });
 
-    // 2. If not, create them with DEFAULT role: 'patient'
+    // 2. If not, create them with DEFAULT role: "patient"
     if (!user) {
       // We get email from req.body (sent by frontend)
       user = new User({
