@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: doctor-config
+data:
+  PORT: "5003"
+  MONGO_URI: "mongodb+srv://savinduweerarathna_db_user:njINEB46cKEqjwUk@medizen.qb4eycl.mongodb.net/doctor_db"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: appointment-config
+data:
+  PORT: "5004"
+  MONGO_URI: "mongodb+srv://savinduweerarathna_db_user:njINEB46cKEqjwUk@medizen.qb4eycl.mongodb.net/appointment_db"
+  RABBITMQ_URL: "amqps://your_url"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemedicine-config
+data:
+  PORT: "5006"
+  MONGO_URI: "mongodb+srv://savinduweerarathna_db_user:njINEB46cKEqjwUk@medizen.qb4eycl.mongodb.net/session_db"
+  AGORA_APP_ID: "abc12345..."

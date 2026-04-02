@@ -1,6 +1,37 @@
 version: '3.8'
 
 services:
+  # --- Member 2: Doctor Management Service ---
+  doctor-service:
+    build: ./services/doctor-service
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./services/doctor-service/.env
+    depends_on:
+      - mongodb
+
+  # --- Member 2: Appointment Service ---
+  appointment-service:
+    build: ./services/appointment-service
+    ports:
+      - "5004:5004"
+    env_file:
+      - ./services/appointment-service/.env
+    depends_on:
+      - mongodb
+
+  # --- Member 2: Telemedicine Service ---
+  telemedicine-service:
+    build: ./services/telemedicine-service
+    ports:
+      - "5006:5006"
+    env_file:
+      - ./services/telemedicine-service/.env
+    depends_on:
+      - mongodb
+
+  # --- Member 4: AI Symptom Checker Service ---
   symptom-checker:
     build: ./services/symptom-checker-service
     ports:
@@ -11,6 +42,7 @@ services:
     depends_on:
       - mongodb
 
+  # --- Shared Database (For local dev if needed) ---
   mongodb:
     image: mongo:latest
     ports:
