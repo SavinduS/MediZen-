@@ -1,0 +1,62 @@
+name: MediZen Core Services CI
+
+# Professional Workflow to automate Build and Docker Validation 
+# for the Doctor, Appointment, and Telemedicine microservices.
+
+on:
+  push:
+    branches: [ "telemedicine-service", "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # Phase 1: Source Code Integrity Check
+  verify-source:
+    name: Build & Verify Node.js Source
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        # These are the services handled by Member 2
+        service: [doctor-service, appointment-service, telemedicine-service]
+
+    steps:
+    - name: Checkout Code from Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js Environment (v20)
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+
+    - name: Install Microservice Dependencies
+      run: |
+        cd services/${{ matrix.service }}
+        npm install
+
+    - name: Static Code Analysis (Syntax Validation)
+      run: |
+        cd services/${{ matrix.service }}
+        # Checks if the entry point script can be compiled
+        node --check src/index.js
+
+  # Phase 2: Container Readiness Validation
+  validate-docker:
+    name: Docker Image Build Test
+    needs: verify-source
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        service: [doctor-service, appointment-service, telemedicine-service]
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Test Docker Container Build (Dry Run)
+      run: |
+        docker build -t medizen-${{ matrix.service }}:validated ./services/${{ matrix.service }}
