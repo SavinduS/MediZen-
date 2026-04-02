@@ -53,5 +53,5 @@ jobs:
           push: true
           # Replace 'your-username' with your actual Docker Hub username
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/medizen-auth-service:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/medizen-auth-service:${{ github.sha }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-auth-service:latest
+            ${{ secrets.DOCKER_HUB_TOKEN }}/medizen-auth-service:${{ github.sha }}
