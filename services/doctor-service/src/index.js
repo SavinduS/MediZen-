@@ -10,6 +10,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
+const path = require('path');
 
 // --- ROUTE IMPORTS ---
 // Importing routes for doctor profile and availability management
@@ -30,6 +31,10 @@ app.use(morgan('dev'));
 
 // Express JSON: Middleware to handle and parse incoming JSON data
 app.use(express.json()); 
+
+// --- SERVING STATIC FILES ---
+// This allows anyone to access the PDFs via URL: http://localhost:5003/prescriptions/filename.pdf
+app.use('/prescriptions', express.static(path.join(__dirname, '../public/prescriptions')));
 
 // --- ROUTE REGISTRATION ---
 

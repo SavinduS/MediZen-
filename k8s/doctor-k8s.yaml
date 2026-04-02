@@ -1,0 +1,38 @@
+# Deployment: Manages the pods (containers) for Doctor Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: doctor-deployment
+spec:
+  replicas: 1 # Run 1 instance of this service
+  selector:
+    matchLabels:
+      app: doctor-service
+  template:
+    metadata:
+      labels:
+        app: doctor-service
+    spec:
+      containers:
+      - name: doctor-service
+        image: medizen-doctor-service:latest # This points to your docker image
+        ports:
+        - containerPort: 5003
+        envFrom:
+        - configMapRef:
+            name: doctor-config
+
+---
+# Service: Provides a stable IP address to access the pods
+apiVersion: v1
+kind: Service
+metadata:
+  name: doctor-service
+spec:
+  selector:
+    app: doctor-service
+  ports:
+    - protocol: TCP
+      port: 5003
+      targetPort: 5003
+  type: ClusterIP # Internal communication only (Gateway handles external)

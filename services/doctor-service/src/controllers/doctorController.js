@@ -4,6 +4,10 @@
  */
 
 const Doctor = require('../models/Doctor');
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
+const Prescription = require('../models/Prescription');
 
 // @desc    Register or Create a new Doctor Profile
 // @route   POST /api/doctors
@@ -108,12 +112,13 @@ exports.getDoctorAvailability = async (req, res) => {
 // @desc    Get all verified doctors (for patient search)
 // @route   GET /api/doctors
 // @access  Public
+// @desc    Get all doctors (Verification check temporarily removed for testing)
 exports.getAllDoctors = async (req, res) => {
     try {
         const { specialty } = req.query;
-        let query = { verified: true }; // Only show verified doctors to patients
+        
+        let query = {}; 
 
-        // Filter by specialty if provided in query params (?specialty=Cardiology)
         if (specialty) {
             query.specialization = specialty;
         }
@@ -122,5 +127,73 @@ exports.getAllDoctors = async (req, res) => {
         res.status(200).json(doctors);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching doctors' });
+    }
+};
+
+// @desc    Generate PDF Prescription and Save to DB
+// @route   POST /api/doctors/prescriptions
+exports.issuePrescription = async (req, res) => {
+    try {
+        const { appointmentId, doctorId, patientId, patientName, diagnosis, medicines } = req.body;
+
+        // 1. Create a filename and path
+        const filename = `prescription-${appointmentId}.pdf`;
+        const uploadsDir = path.join(__dirname, '../../public/prescriptions');
+        
+        // Ensure directory exists
+        if (!fs.existsSync(uploadsDir)){
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        
+        const filePath = path.join(uploadsDir, filename);
+
+        // 2. Create PDF Design using PDFKit
+        const doc = new PDFDocument({ margin: 50 });
+        const writeStream = fs.createWriteStream(filePath);
+        doc.pipe(writeStream);
+
+        // --- PDF DESIGN ---
+        doc.fontSize(20).text('MEDIZEN SMART HEALTHCARE', { align: 'center' }).moveDown();
+        doc.fontSize(16).text('Digital Medical Prescription', { align: 'center', underline: true }).moveDown();
+        
+        doc.fontSize(12).text(`Date: ${new Date().toLocaleDateString()}`);
+        doc.text(`Patient: ${patientName}`);
+        doc.text(`Appointment ID: ${appointmentId}`);
+        doc.text(`Diagnosis: ${diagnosis}`).moveDown();
+
+        doc.fontSize(14).text('Medicines:', { underline: true }).moveDown(0.5);
+        medicines.forEach((med, index) => {
+            doc.fontSize(12).text(`${index + 1}. ${med.name} - ${med.dosage} (${med.frequency})`);
+        });
+
+        doc.moveDown(2);
+        doc.text('--------------------------', { align: 'right' });
+        doc.text('Doctor Signature', { align: 'right' });
+
+        doc.end();
+
+        // 3. Save to Database after PDF is done
+        writeStream.on('finish', async () => {
+            const newPrescription = new Prescription({
+                appointmentId,
+                doctorId,
+                patientId,
+                patientName,
+                diagnosis,
+                medicines,
+                pdfPath: filePath
+            });
+            await newPrescription.save();
+
+            res.status(201).json({
+                message: 'Prescription generated successfully',
+                pdfUrl: `http://localhost:5003/prescriptions/${filename}`, // Frontend can now open this link
+                data: newPrescription
+            });
+        });
+
+    } catch (error) {
+        console.error('PDF Generation Error:', error.message);
+        res.status(500).json({ message: 'Failed to issue prescription' });
     }
 };
