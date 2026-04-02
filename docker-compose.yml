@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # --- Member 2: Doctor Management Service ---
   doctor-service:
@@ -38,17 +36,25 @@ services:
       - "5005:5005"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - MONGO_URI=mongodb://mongodb:27017/symptom_db
+      - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
     depends_on:
-      - mongodb
+      - mongodb-ai
+    networks:
+      - medizen-network
 
-  # --- Shared Database (For local dev if needed) ---
-  mongodb:
+  mongodb-ai: 
     image: mongo:latest
+    container_name: mongodb-ai
     ports:
       - "27017:27017"
     volumes:
-      - mongo-data:/data/db
+      - symptom-data:/data/db
+    networks:
+      - medizen-network
+
+networks:
+  medizen-network:
+    driver: bridge
 
 volumes:
-  mongo-data:
+  symptom-data:
