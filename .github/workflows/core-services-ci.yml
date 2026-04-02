@@ -5,7 +5,7 @@ name: MediZen Core Services CI
 
 on:
   push:
-    branches: [ "final/member-2-integration", "main" ]
+    branches: [ "telemedicine-service", "main" ]
   pull_request:
     branches: [ "main" ]
 
