@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "services/auth-service/**" # Only trigger if files in this folder change
+      - "services/auth-service/**"
   pull_request:
     branches: ["main"]
     paths:
@@ -21,7 +21,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-size: 20
+          node-version: 20
           cache: "npm"
           cache-dependency-path: "services/auth-service/package-lock.json"
 
@@ -29,12 +29,6 @@ jobs:
         run: |
           cd services/auth-service
           npm install
-
-      # Optional: Add testing step here if you have tests
-      # - name: Run Tests
-      #   run: |
-      #     cd services/auth-service
-      #     npm test
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -51,7 +45,6 @@ jobs:
           context: ./services/auth-service
           file: ./services/auth-service/Dockerfile
           push: true
-          # Replace 'your-username' with your actual Docker Hub username
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-auth-service:latest
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-auth-service:${{ github.sha }}
