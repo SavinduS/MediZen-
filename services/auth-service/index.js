@@ -8,7 +8,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// MongoDB User Schema....
+// MongoDB User Schema
 const userSchema = new mongoose.Schema({
   clerkId: { type: String, required: true, unique: true },
   email: { type: String, required: true },
