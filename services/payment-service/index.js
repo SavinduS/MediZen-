@@ -77,7 +77,6 @@ app.post("/api/payments/initiate", async (req, res) => {
 });
 
 // 2. POST /api/payments/webhook
-// 2. POST /api/payments/webhook
 app.post("/api/payments/webhook", async (req, res) => {
   try {
     // Webhook Security Check
@@ -112,6 +111,15 @@ app.post("/api/payments/webhook", async (req, res) => {
     }
 
     await payment.save();
+
+    if (status === "completed") {
+      await sendToQueue({
+        userId: payment.patientId,
+        type: "email", // or "sms"
+        message: `Your payment of LKR ${payment.amount} was successful`,
+        subject: "Payment Confirmation"
+      });
+    }
 
     res.json({ message: "Webhook processed successfully", payment });
   } catch (error) {
@@ -175,6 +183,27 @@ app.get("/api/payments/:id/receipt", async (req, res) => {
     console.error("❌ PDF Generation Error:", error.message);
   }
 });
+
+const amqp = require("amqplib");
+
+async function sendToQueue(data) {
+  try {
+    const connection = await amqp.connect(process.env.RABBITMQ_URL);
+    const channel = await connection.createChannel();
+
+    const queue = process.env.RABBITMQ_QUEUE || "notifications_queue";
+
+    await channel.assertQueue(queue, { durable: true });
+
+    channel.sendToQueue(queue, Buffer.from(JSON.stringify(data)));
+
+    console.log("📤 Sent to RabbitMQ:", data);
+
+    setTimeout(() => connection.close(), 500);
+  } catch (error) {
+    console.error("❌ RabbitMQ Send Error:", error.message);
+  }
+}
 
 const PORT = process.env.PORT || 5007;
 app.listen(PORT, () => console.log(`🚀 Payment Service running on port ${PORT}`));
