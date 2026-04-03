@@ -1,22 +1,70 @@
-version: '3.8'
-
 services:
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "5001:5001"
+    environment:
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - MONGO_URI=mongodb://mongo-db:27017/medizen_auth
+    depends_on:
+      - mongo-db
+
+  # --- Member 2: Doctor Management Service ---
+  doctor-service:
+    build: ./services/doctor-service
+    ports:
+      - "5003:5003"
+    env_file:
+      - ./services/doctor-service/.env
+    depends_on:
+      - mongodb
+
+  # --- Member 2: Appointment Service ---
+  appointment-service:
+    build: ./services/appointment-service
+    ports:
+      - "5004:5004"
+    env_file:
+      - ./services/appointment-service/.env
+    depends_on:
+      - mongodb
+
+  # --- Member 2: Telemedicine Service ---
+  telemedicine-service:
+    build: ./services/telemedicine-service
+    ports:
+      - "5006:5006"
+    env_file:
+      - ./services/telemedicine-service/.env
+    depends_on:
+      - mongodb
+
+  # --- Member 4: AI Symptom Checker Service ---
   symptom-checker:
     build: ./services/symptom-checker-service
     ports:
       - "5005:5005"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - MONGO_URI=mongodb://mongodb:27017/symptom_db
+      - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
     depends_on:
-      - mongodb
+      - mongodb-ai
+    networks:
+      - medizen-network
 
-  mongodb:
+  mongodb-ai:
     image: mongo:latest
+    container_name: mongodb-ai
     ports:
       - "27017:27017"
     volumes:
-      - mongo-data:/data/db
+      - symptom-data:/data/db
+    networks:
+      - medizen-network
+
+networks:
+  medizen-network:
+    driver: bridge
 
 volumes:
-  mongo-data:
+  symptom-data:
