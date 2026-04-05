@@ -8,6 +8,30 @@ import axios from 'axios';
 const doctorAPI = axios.create({ baseURL: 'http://localhost:5003/api/doctors' });
 const appointmentAPI = axios.create({ baseURL: 'http://localhost:5004/api/appointments' });
 const videoAPI = axios.create({ baseURL: 'http://localhost:5006/api/sessions' });
+const authAPI = axios.create({ baseURL: 'http://localhost:5001/api/auth' });
+const patientAPI = axios.create({ baseURL: 'http://localhost:5002/api/patient' });
+
+// --- AUTH SERVICE CALLS (PORT 5001) ---
+export const syncUser = (email, token) => 
+  authAPI.post('/sync', { email }, { headers: { Authorization: `Bearer ${token}` } });
+
+// --- PATIENT SERVICE CALLS (PORT 5002) ---
+export const fetchPatientProfile = (token) => 
+  patientAPI.get('/profile', { headers: { Authorization: `Bearer ${token}` } });
+
+export const updatePatientProfile = (data, token) => 
+  patientAPI.put('/profile', data, { headers: { Authorization: `Bearer ${token}` } });
+
+export const uploadMedicalReport = (formData, token) => 
+  patientAPI.post('/reports', formData, { 
+    headers: { 
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data'
+    } 
+  });
+
+export const fetchMedicalReports = (token) => 
+  patientAPI.get('/reports', { headers: { Authorization: `Bearer ${token}` } });
 
 // --- DOCTOR SERVICE CALLS (PORT 5003) ---
 export const fetchDoctors = () => doctorAPI.get('/');
