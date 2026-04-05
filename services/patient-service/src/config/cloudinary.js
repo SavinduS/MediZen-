@@ -3,6 +3,8 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
 require("dotenv").config();
 
+const path = require("path");
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -17,17 +19,22 @@ const storage = new CloudinaryStorage({
       ? req.body.patientName.replace(/\s+/g, "_").toLowerCase()
       : req.auth?.userId || "unknown_patient";
 
-    // Detect if the file is a PDF
-    const isPDF = file.mimetype === "application/pdf" || file.originalname.toLowerCase().endsWith(".pdf");
+    const ext = path.extname(file.originalname).toLowerCase();
+    const isPDF = ext === ".pdf" || file.mimetype === "application/pdf";
+
+    if (isPDF) {
+      return {
+        folder: `medical_reports/${patientName}`,
+        resource_type: "raw",
+        // Keep the full filename with extension for raw files
+        public_id: `${Date.now()}-${file.originalname}`,
+      };
+    }
 
     return {
       folder: `medical_reports/${patientName}`,
-      // Use 'raw' for PDFs to preserve document type, 'auto' for others
-      resource_type: isPDF ? "raw" : "auto",
-      // For raw files, Cloudinary needs the extension in the public_id to serve it correctly
-      public_id: isPDF 
-        ? `${Date.now()}-${file.originalname}`
-        : `${Date.now()}-${file.originalname.split(".")[0]}`,
+      resource_type: "auto",
+      public_id: `${Date.now()}-${path.basename(file.originalname, ext)}`,
     };
   },
 });

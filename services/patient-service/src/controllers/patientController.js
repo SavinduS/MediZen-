@@ -42,16 +42,21 @@ const updateProfile = async (req, res) => {
 
 const uploadReport = async (req, res) => {
   try {
-    // Determine resource type based on file extension or mimetype
-    const isPDF = req.file.mimetype === "application/pdf" || req.file.originalname.toLowerCase().endsWith(".pdf");
+    // Cloudinary result fields are available in req.file
+    // format, resource_type, original_filename, secure_url (path), etc.
     
-    // Cloudinary result may provide resource_type, but we can also infer it
-    const resourceType = isPDF ? "raw" : (req.file.resource_type || "image");
+    // Check if it's a PDF from multiple sources
+    const isPDF = req.file.mimetype === "application/pdf" || 
+                  req.file.originalname?.toLowerCase().endsWith(".pdf") ||
+                  req.file.format === "pdf";
+    
+    // Use Cloudinary's returned resource_type if available, otherwise fallback
+    const resourceType = req.file.resource_type || (isPDF ? "raw" : "image");
 
     const newReport = new Report({
       patientClerkId: req.auth.userId,
-      fileName: req.body.fileName || "Medical Report",
-      fileUrl: req.file.path, // Cloudinary URL
+      fileName: req.body.fileName || req.file.originalname || "Medical Report",
+      fileUrl: req.file.path, // Cloudinary URL (should be secure_url)
       publicId: req.file.filename, // Cloudinary public_id (includes folder)
       resourceType: resourceType,
     });

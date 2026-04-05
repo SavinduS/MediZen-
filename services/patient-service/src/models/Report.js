@@ -5,7 +5,7 @@ const ReportSchema = new mongoose.Schema({
   fileName: String,
   fileUrl: String,
   publicId: String,
-  resourceType: { type: String, default: "image" }, // To support delete correctly
+  resourceType: String, // Store 'raw' or 'image' from Cloudinary
   uploadedAt: { type: Date, default: Date.now },
 });
 
