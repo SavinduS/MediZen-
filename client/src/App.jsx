@@ -23,6 +23,8 @@ import SignupPage from "./pages/SignupPage";
 import VideoRoom from "./pages/VideoRoom";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import PrescriptionForm from "./pages/PrescriptionForm";
+import PatientProfile from "./pages/PatientProfile";
+import MedicalReports from "./pages/MedicalReports";
 
 // 1. Helper Component to protect routes and wait for the Role to load
 const ProtectedRoute = ({ children, allowedRole, currentRole, loading }) => {
@@ -91,12 +93,26 @@ function AppContent() {
               <SignedIn>
                 {/* Show Patient links if role is 'patient' OR if we are still loading (to prevent flicker) */}
                 {(role === "patient" || loadingRole) && (
-                  <Link
-                    to="/my-appointments"
-                    className="hover:text-blue-400 transition text-blue-100"
-                  >
-                    My Appointments
-                  </Link>
+                  <>
+                    <Link
+                      to="/my-appointments"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      My Appointments
+                    </Link>
+                    <Link
+                      to="/reports"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Medical Reports
+                    </Link>
+                    <Link
+                      to="/profile"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Profile
+                    </Link>
+                  </>
                 )}
 
                 {role === "doctor" && (
@@ -146,6 +162,36 @@ function AppContent() {
           <Route path="/register/*" element={<SignupPage />} />
 
           {/* Patient Routes - Now uses the ProtectedRoute helper */}
+          <Route
+            path="/profile"
+            element={
+              <SignedIn>
+                <ProtectedRoute
+                  allowedRole="patient"
+                  currentRole={role}
+                  loading={loadingRole}
+                >
+                  <PatientProfile />
+                </ProtectedRoute>
+              </SignedIn>
+            }
+          />
+
+          <Route
+            path="/reports"
+            element={
+              <SignedIn>
+                <ProtectedRoute
+                  allowedRole="patient"
+                  currentRole={role}
+                  loading={loadingRole}
+                >
+                  <MedicalReports />
+                </ProtectedRoute>
+              </SignedIn>
+            }
+          />
+
           <Route
             path="/my-appointments"
             element={
@@ -202,7 +248,7 @@ function AppContent() {
       </main>
 
       <footer className="py-6 text-center text-slate-400 text-sm">
-        &copy; 2026 MediZen - Distributed Systems Assignment
+        &copy; 2026 MediZen
       </footer>
     </div>
   );

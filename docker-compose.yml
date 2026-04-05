@@ -9,6 +9,15 @@ services:
     depends_on:
       - mongo-db
 
+  patient-service:
+    build: ./services/patient-service
+    ports:
+      - "5002:5002"
+    env_file:
+      - ./services/patient-service/.env
+    depends_on:
+      - mongo-db
+
   # --- Member 2: Doctor Management Service ---
   doctor-service:
     build: ./services/doctor-service
