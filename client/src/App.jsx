@@ -225,7 +225,7 @@ function AppContent() {
       </main>
 
       <footer className="py-6 text-center text-slate-400 text-sm">
-        &copy; 2026 MediZen - Distributed Systems Assignment
+        &copy; 2026 MediZen
       </footer>
     </div>
   );

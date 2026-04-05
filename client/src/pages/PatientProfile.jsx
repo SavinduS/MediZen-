@@ -33,6 +33,8 @@ const PatientProfile = () => {
   const [loadError, setLoadError] = useState(null);
   const [toast, setToast] = useState(null);
 
+  const today = new Date().toISOString().split("T")[0];
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 4500);
@@ -243,6 +245,7 @@ const PatientProfile = () => {
                 value={formData.dob}
                 onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
                 className={inputClass}
+                max={today}
               />
             </div>
 
