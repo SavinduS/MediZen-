@@ -7,6 +7,7 @@ const { publishNotification } = require('../config/rabbitMQ');
 
 // @desc    Book a new Appointment with Conflict Detection
 // @route   POST /api/appointments
+//test 
 exports.bookAppointment = async (req, res) => {
     try {
         const { patientId, doctorId, slotTime } = req.body;
