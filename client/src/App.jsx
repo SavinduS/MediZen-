@@ -20,6 +20,9 @@ import DoctorListing from "./pages/DoctorListing";
 import MyAppointments from "./pages/MyAppointments";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import VideoRoom from "./pages/VideoRoom";
+import DoctorDashboard from "./pages/DoctorDashboard";
+import PrescriptionForm from "./pages/PrescriptionForm";
 
 // 1. Helper Component to protect routes and wait for the Role to load
 const ProtectedRoute = ({ children, allowedRole, currentRole, loading }) => {
@@ -147,11 +150,7 @@ function AppContent() {
             path="/my-appointments"
             element={
               <SignedIn>
-                <ProtectedRoute
-                  allowedRole="patient"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
+                <ProtectedRoute allowedRole="patient" currentRole={role} loading={loadingRole}>
                   <MyAppointments />
                 </ProtectedRoute>
               </SignedIn>
@@ -163,10 +162,34 @@ function AppContent() {
             path="/doctor-dashboard"
             element={
               <SignedIn>
-                <div>Doctor Dashboard</div>
+                <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                  <DoctorDashboard />
+                </ProtectedRoute>
               </SignedIn>
             }
           />
+
+           <Route
+              path="/issue-prescription"
+              element={
+                <SignedIn>
+                  <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                    <PrescriptionForm />
+                  </ProtectedRoute>
+                </SignedIn>
+              }
+            />
+
+            {/* Video Consultation Room (Shared - Accessible by both signed-in Doctor/Patient) */}
+            <Route
+              path="/video"
+              element={
+                <SignedIn>
+                  <VideoRoom />
+                </SignedIn>
+              }
+            />
+
           <Route
             path="/admin-panel"
             element={
