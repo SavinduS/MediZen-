@@ -91,3 +91,16 @@ exports.getPatientAppointments = async (req, res) => {
         res.status(500).json({ message: 'Error fetching patient history' });
     }
 };
+
+/**
+ * @desc    Get all appointments (Internal/Admin/Doctor Dashboard use)
+ * @route   GET /api/appointments
+ */
+exports.getAllAppointments = async (req, res) => {
+    try {
+        const appointments = await Appointment.find().sort({ slotTime: 1 });
+        res.status(200).json(appointments);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching appointments' });
+    }
+};

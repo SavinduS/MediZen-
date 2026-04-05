@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import DoctorListing from './pages/DoctorListing';
 import MyAppointments from './pages/MyAppointments';
 import VideoRoom from './pages/VideoRoom';
+import DoctorDashboard from './pages/DoctorDashboard';
+import PrescriptionForm from './pages/PrescriptionForm';
 
 function App() {
   return (
@@ -30,6 +32,8 @@ function App() {
             <Route path="/" element={<DoctorListing />} />
             <Route path="/my-appointments" element={<MyAppointments />} />
             <Route path="/video" element={<VideoRoom />} />
+            <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+            <Route path="/issue-prescription" element={<PrescriptionForm />} />
           </Routes>
         </main>
       </div>
