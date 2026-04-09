@@ -1,13 +1,24 @@
 name: MediZen Core Services CI
 
 # Professional Workflow to automate Build and Docker Validation 
-# for the Doctor, Appointment, and Telemedicine microservices.
+# only for Member 2's services (Doctor, Appointment, and Telemedicine).
 
 on:
   push:
-    branches: [ "telemedicine-service", "main" ]
+    branches: [ "clinical-consultation-suite", "main" ]
+    # Filter: Trigger only when files in these specific folders are changed
+    paths:
+      - 'services/doctor-service/**'
+      - 'services/appointment-service/**'
+      - 'services/telemedicine-service/**'
+  
   pull_request:
     branches: [ "main" ]
+    # Filter: Trigger only when a PR affects Member 2's specific folders
+    paths:
+      - 'services/doctor-service/**'
+      - 'services/appointment-service/**'
+      - 'services/telemedicine-service/**'
 
 jobs:
   # Phase 1: Source Code Integrity Check
@@ -17,7 +28,7 @@ jobs:
 
     strategy:
       matrix:
-        # These are the services handled by Member 2
+        # These are the clinical and consultation engine microservices
         service: [doctor-service, appointment-service, telemedicine-service]
 
     steps:
@@ -37,7 +48,7 @@ jobs:
     - name: Static Code Analysis (Syntax Validation)
       run: |
         cd services/${{ matrix.service }}
-        # Checks if the entry point script can be compiled
+        # Performs a dry-run syntax check of the entry script
         node --check src/index.js
 
   # Phase 2: Container Readiness Validation
@@ -59,4 +70,5 @@ jobs:
 
     - name: Test Docker Container Build (Dry Run)
       run: |
+        # Verifies that the Dockerfile for the specific service is valid
         docker build -t medizen-${{ matrix.service }}:validated ./services/${{ matrix.service }}
