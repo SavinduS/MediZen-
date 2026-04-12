@@ -5,7 +5,16 @@ services:
       - "5001:5001"
     environment:
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - MONGO_URI=mongodb://mongo-db:27017/medizen_auth
+      - MONGO_URI=mongodb://mongo-db:27017/users
+    depends_on:
+      - mongo-db
+
+  patient-service:
+    build: ./services/patient-service
+    ports:
+      - "5002:5002"
+    env_file:
+      - ./services/patient-service/.env
     depends_on:
       - mongo-db
 

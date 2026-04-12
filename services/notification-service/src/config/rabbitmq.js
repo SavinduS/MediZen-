@@ -5,18 +5,19 @@ let connection = null;
 
 const connectRabbitMQ = async () => {
   try {
-    if (!process.env.RABBITMQ_URL) {
+    const rabbitURL = process.env.RABBITMQ_URL;
+    if (!rabbitURL) {
       console.log("⚠️ RabbitMQ URL not provided. Running without queue.");
       return null;
     }
 
-    connection = await amqp.connect(process.env.RABBITMQ_URL);
+    connection = await amqp.connect(rabbitURL);
     channel = await connection.createChannel();
 
-    console.log("🐇 RabbitMQ connected");
+    console.log(`🐇 RabbitMQ connected`);
     return channel;
-  } catch (error) {
-    console.error("❌ RabbitMQ connection failed:", error.message);
+  } catch (err) {
+    console.error(`❌ RabbitMQ connection failed: ${err.message}`);
     return null;
   }
 };

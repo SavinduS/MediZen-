@@ -1,6 +1,7 @@
 /**
- * VideoRoom Component - Telemedicine Interface
- * Handles real-time video streaming between Doctor and Patient using Agora SDK.
+ * VideoRoom Component - Integrated Telemedicine Interface
+ * Purpose: Provides a secure environment for real-time video consultations.
+ * Member 2 Responsibility: Telemedicine Token Logic (5006) & Agora RTC UI.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -15,63 +16,79 @@ import AgoraRTC, {
   useRemoteUsers 
 } from "agora-rtc-react";
 import { generateVideoToken } from '../services/api';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useUser } from "@clerk/clerk-react"; // Access auth state
+import { PhoneOff, Mic, Video as VideoIcon, User, ShieldCheck } from 'lucide-react';
 
-// Initialize Agora Client
+// Agora Client Global Configuration
 const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
 
 const VideoRoom = () => {
+  const { user } = useUser(); // Get logged-in user data
   const [searchParams] = useSearchParams();
-  const appointmentId = searchParams.get("aptId"); // Unique channel name from URL
+  const navigate = useNavigate();
+
+  // Extract Context from URL: Appointment ID and current User Role (passed from Dashboard/History)
+  const appointmentId = searchParams.get("aptId"); 
+  const userRole = searchParams.get("role") || "patient"; 
+  
   const [token, setToken] = useState(null);
   const [inCall, setInCall] = useState(false);
 
   useEffect(() => {
     /**
-     * Fetch the secure video token from the Telemedicine Service (Port 5006)
+     * Fetch a unique security token for this session from the Telemedicine backend
      */
     const fetchToken = async () => {
       try {
         const response = await generateVideoToken(appointmentId);
         setToken(response.data.token);
       } catch (err) {
-        console.error("Video Token Error:", err);
+        console.error("Clinical System: Token retrieval failed", err);
       }
     };
     if (appointmentId) fetchToken();
   }, [appointmentId]);
 
+  // Loading state while securing the connection
   if (!token) return (
-    <div className="h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-      <p className="text-slate-400 font-medium tracking-wide">Connecting to Secure Medical Server...</p>
+    <div className="h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
+      <div className="relative">
+        <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+        <div className="absolute inset-0 flex items-center justify-center">
+            <ShieldCheck size={20} className="text-blue-500" />
+        </div>
+      </div>
+      <p className="mt-6 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Securing Medical Feed...</p>
     </div>
   );
 
   return (
-    <div className="h-screen bg-slate-950 overflow-hidden">
+    <div className="h-screen bg-slate-950 overflow-hidden font-sans">
       <AgoraRTCProvider client={client}>
         {!inCall ? (
-          /* PRE-CALL SCREEN */
-          <div className="flex flex-col items-center justify-center h-full px-4">
-            <div className="bg-slate-900 p-10 rounded-[2rem] border border-slate-800 shadow-2xl max-w-md w-full text-center">
-              <div className="w-20 h-20 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <div className="w-4 h-4 bg-blue-500 rounded-full animate-ping"></div>
+          /* PRE-CALL / LOBBY SCREEN */
+          <div className="flex flex-col items-center justify-center h-full px-6">
+            <div className="bg-slate-900 p-12 rounded-[3rem] border border-slate-800 shadow-2xl max-w-md w-full text-center">
+              <div className="mb-8">
+                <div className="bg-blue-600/10 w-24 h-24 rounded-full flex items-center justify-center mx-auto ring-8 ring-blue-600/5">
+                   <VideoIcon size={40} className="text-blue-500" />
+                </div>
               </div>
-              <h2 className="text-white text-3xl font-bold mb-2">Video Consultation</h2>
-              <p className="text-slate-400 mb-8">Appointment ID: <span className="text-blue-400">{appointmentId}</span></p>
+              <h2 className="text-white text-3xl font-black tracking-tight mb-2 uppercase italic">Consultation Room</h2>
+              <p className="text-slate-500 text-sm mb-10 font-medium">Hello {user?.firstName}, please click below to enter the private channel for session <span className="text-blue-500">{appointmentId}</span></p>
               
               <button 
                 onClick={() => setInCall(true)}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-2xl font-bold text-lg transition-all transform active:scale-95 shadow-xl shadow-blue-900/20"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] transition-all transform active:scale-95 shadow-xl shadow-blue-900/40"
               >
-                Start Consultation Now
+                Enter Consultation Now
               </button>
             </div>
           </div>
         ) : (
-          /* ACTIVE CALL SCREEN */
-          <CallInterface channelName={appointmentId} token={token} />
+          /* LIVE CALL UI: Pass context to manage UI labels dynamically */
+          <CallInterface channelName={appointmentId} token={token} role={userRole} />
         )}
       </AgoraRTCProvider>
     </div>
@@ -80,14 +97,15 @@ const VideoRoom = () => {
 
 /**
  * CallInterface Component
- * Manages video tracks and rendering local/remote streams.
+ * Manages RTC streams and Role-based Viewports.
  */
-const CallInterface = ({ channelName, token }) => {
+const CallInterface = ({ channelName, token, role }) => {
+  const navigate = useNavigate();
   const { isLoading: micLoading, localMicrophoneTrack } = useLocalMicrophoneTrack();
   const { isLoading: camLoading, localCameraTrack } = useLocalCameraTrack();
   const remoteUsers = useRemoteUsers();
 
-  // JOIN CHANNEL: AppID must match the one used in the backend .env
+  // JOIN CHANNEL: Uses local development AppID. Role is publisher by default.
   useJoin({ 
       appid: "abc123456789def0123456789abcdef0", 
       channel: channelName, 
@@ -95,56 +113,62 @@ const CallInterface = ({ channelName, token }) => {
       uid: null 
   });
   
+  // Publish tracks to the channel for other participants to see
   usePublish([localMicrophoneTrack, localCameraTrack]);
 
   if (micLoading || camLoading) return (
-    <div className="h-screen bg-slate-900 flex items-center justify-center text-white">
-      <p>Initializing hardware resources...</p>
+    <div className="h-screen bg-slate-950 flex items-center justify-center text-white italic font-bold">
+      Configuring clinical hardware...
     </div>
   );
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+    <div className="p-6 md:p-10 h-full flex flex-col">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1">
         
-        {/* LOCAL FEED (Patient View) */}
-        <div className="relative bg-slate-900 rounded-[2.5rem] overflow-hidden border-4 border-blue-600/50 group shadow-2xl">
+        {/* LOCAL FEED (YOU) - Dynamic Label based on Role */}
+        <div className="relative bg-slate-900 rounded-[3rem] overflow-hidden border-4 border-blue-500/30 group shadow-2xl ring-1 ring-blue-500/20">
           <LocalVideoTrack track={localCameraTrack} play className="h-full w-full object-cover" />
-          <div className="absolute bottom-6 left-6 bg-blue-600/80 backdrop-blur-lg px-5 py-2 rounded-2xl text-white font-bold text-sm">
-            Patient (You)
+          <div className="absolute bottom-8 left-8 bg-blue-600/90 backdrop-blur-xl px-6 py-2.5 rounded-2xl text-white font-black text-[10px] uppercase tracking-widest shadow-lg">
+            {role === 'doctor' ? 'Clinical Lead (You)' : 'Patient (You)'}
           </div>
         </div>
 
-        {/* REMOTE FEED (Doctor View) */}
-        <div className="relative bg-slate-900 rounded-[2.5rem] overflow-hidden border-2 border-slate-800 group shadow-2xl flex items-center justify-center">
+        {/* REMOTE FEED (THE OTHER PARTY) */}
+        <div className="relative bg-slate-900 rounded-[3rem] overflow-hidden border-2 border-slate-800 flex items-center justify-center group shadow-2xl">
           {remoteUsers.length > 0 ? (
             remoteUsers.map((user) => (
               <div key={user.uid} className="h-full w-full">
                 <RemoteUser user={user} play />
-                <div className="absolute bottom-6 left-6 bg-slate-800/80 backdrop-blur-lg px-5 py-2 rounded-2xl text-white font-bold text-sm italic">
-                  Medical Specialist
+                <div className="absolute bottom-8 left-8 bg-slate-900/90 backdrop-blur-xl px-6 py-2.5 rounded-2xl text-white font-black text-[10px] uppercase tracking-widest shadow-lg italic">
+                    {role === 'doctor' ? 'Connected Patient' : 'Medical Specialist'}
                 </div>
               </div>
             ))
           ) : (
+            /* WAITING STATE */
             <div className="text-center">
-              <div className="w-24 h-24 bg-slate-800 rounded-full mx-auto mb-6 flex items-center justify-center">
-                 <span className="text-slate-500 animate-pulse text-4xl">?</span>
+              <div className="w-24 h-24 bg-slate-800/50 rounded-full mx-auto mb-6 flex items-center justify-center border border-slate-700 animate-pulse">
+                 <User className="text-slate-600" size={32} />
               </div>
-              <p className="text-slate-500 font-medium">Waiting for doctor to join...</p>
+              <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest">
+                Waiting for the {role === 'doctor' ? 'patient' : 'doctor'}...
+              </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* END CALL BAR */}
-      <div className="py-8 flex justify-center">
+      {/* CALL CONTROLS */}
+      <div className="py-10 flex justify-center gap-6">
+        <button className="bg-slate-800 text-white p-5 rounded-full hover:bg-slate-700 transition"><Mic size={24}/></button>
         <button 
-          onClick={() => window.location.href = '/my-appointments'}
-          className="bg-red-500 hover:bg-red-400 text-white px-12 py-4 rounded-2xl font-bold flex items-center gap-3 transition shadow-lg shadow-red-900/20"
+          onClick={() => window.location.href = (role === 'doctor' ? '/doctor-dashboard' : '/my-appointments')}
+          className="bg-red-500 hover:bg-red-400 text-white px-12 py-4 rounded-[1.5rem] font-black uppercase text-xs tracking-widest flex items-center gap-3 transition shadow-2xl shadow-red-900/40 active:scale-95"
         >
-          Disconnect Call
+          <PhoneOff size={20} /> End Session
         </button>
+        <button className="bg-slate-800 text-white p-5 rounded-full hover:bg-slate-700 transition"><VideoIcon size={24}/></button>
       </div>
     </div>
   );
