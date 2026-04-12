@@ -5,6 +5,8 @@ import {
   Route,
   Link,
   Navigate,
+  useNavigate,
+  useLocation,
 } from "react-router-dom";
 import {
   SignedIn,
@@ -20,13 +22,35 @@ import DoctorListing from "./pages/DoctorListing";
 import MyAppointments from "./pages/MyAppointments";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+<<<<<<< Updated upstream
+=======
+import VideoRoom from "./pages/VideoRoom";
+import DoctorDashboard from "./pages/DoctorDashboard";
+import PrescriptionForm from "./pages/PrescriptionForm";
+import PatientProfile from "./pages/PatientProfile";
+import MedicalReports from "./pages/MedicalReports";
+import PaymentCheckout from "./pages/PaymentCheckout";
+import PaymentStatus from "./pages/PaymentStatus";
+import ReceiptPage from "./pages/ReceiptPage";
+
+// Admin Layout & Pages
+import AdminLayout from "./components/layouts/AdminLayout";
+import AdminOverview from "./pages/admin/AdminOverview";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminDoctors from "./pages/admin/AdminDoctors";
+import AdminPayments from "./pages/admin/AdminPayments";
+import AdminNotifications from "./pages/admin/AdminNotifications";
+>>>>>>> Stashed changes
 
 // 1. Helper Component to protect routes and wait for the Role to load
 const ProtectedRoute = ({ children, allowedRole, currentRole, loading }) => {
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center font-medium text-blue-600">
-        Verifying Access...
+      <div className="flex h-screen items-center justify-center font-medium text-blue-600 bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <span>Verifying Access...</span>
+        </div>
       </div>
     );
   }
@@ -41,8 +65,10 @@ function AppContent() {
   const { getToken } = useAuth();
   const [role, setRole] = useState(null);
   const [loadingRole, setLoadingRole] = useState(true);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Sync with Member 01 Auth Service
+  // Sync with Backend Auth Service
   useEffect(() => {
     const syncUser = async () => {
       if (user) {
@@ -53,8 +79,19 @@ function AppContent() {
             { email: user.primaryEmailAddress.emailAddress },
             { headers: { Authorization: `Bearer ${token}` } },
           );
-          // Set role and stop loading
-          setRole(response.data.role.toLowerCase());
+          const userRole = response.data.role.toLowerCase();
+          setRole(userRole);
+
+          // Handle automatic redirection based on role after successful login
+          if (location.pathname === "/login" || location.pathname === "/register") {
+            if (userRole === "admin") {
+              navigate("/admin/dashboard", { replace: true });
+            } else if (userRole === "doctor") {
+              navigate("/doctor-dashboard", { replace: true });
+            } else {
+              navigate("/", { replace: true });
+            }
+          }
         } catch (error) {
           console.error("Backend Sync Error:", error);
         } finally {
@@ -66,11 +103,22 @@ function AppContent() {
     };
 
     if (clerkLoaded) syncUser();
-  }, [user, clerkLoaded, getToken]);
+  }, [user, clerkLoaded, getToken, navigate, location.pathname]);
+
+  // Protect Admin routes and handle admin landing on home page
+  useEffect(() => {
+    if (!loadingRole && role) {
+      if (role !== "admin" && location.pathname.startsWith("/admin")) {
+        navigate("/", { replace: true });
+      } else if (role === "admin" && (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/register")) {
+        navigate("/admin/dashboard", { replace: true });
+      }
+    }
+  }, [role, loadingRole, location.pathname, navigate]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+      <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50 border-b border-slate-800">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link
             to="/"
@@ -80,13 +128,12 @@ function AppContent() {
           </Link>
 
           <div className="flex items-center gap-6">
-            <nav className="space-x-8 hidden md:flex font-medium">
-              <Link to="/" className="hover:text-blue-400 transition">
+            <nav className="space-x-8 hidden md:flex font-medium items-center">
+              <Link to="/" className="hover:text-blue-400 transition text-slate-300">
                 Doctors
               </Link>
 
               <SignedIn>
-                {/* Show Patient links if role is 'patient' OR if we are still loading (to prevent flicker) */}
                 {(role === "patient" || loadingRole) && (
                   <Link
                     to="/my-appointments"
@@ -97,16 +144,28 @@ function AppContent() {
                 )}
 
                 {role === "doctor" && (
-                  <Link
-                    to="/doctor-dashboard"
-                    className="hover:text-blue-400 transition"
-                  >
-                    Dashboard
-                  </Link>
+                  <>
+                    <Link
+                      to="/doctor-dashboard"
+                      className="hover:text-blue-400 transition text-slate-300"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      to="/issue-prescription"
+                      className="hover:text-blue-400 transition text-slate-300"
+                    >
+                      Issue Prescription
+                    </Link>
+                  </>
                 )}
+
                 {role === "admin" && (
-                  <Link to="/admin-panel" className="text-red-400 transition">
-                    Admin
+                  <Link
+                    to="/admin/dashboard"
+                    className="hover:text-blue-400 transition text-blue-100"
+                  >
+                    Admin Panel
                   </Link>
                 )}
               </SignedIn>
@@ -115,7 +174,7 @@ function AppContent() {
             <SignedOut>
               <Link
                 to="/login"
-                className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-full font-medium"
+                className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-full font-bold transition shadow-md"
               >
                 Login
               </Link>
@@ -124,7 +183,7 @@ function AppContent() {
             <SignedIn>
               <div className="flex items-center gap-3">
                 {!loadingRole && (
-                  <span className="text-[10px] bg-slate-700 px-2 py-1 rounded uppercase font-bold text-slate-300 border border-slate-600">
+                  <span className="text-[10px] bg-slate-800 px-2 py-1 rounded uppercase font-bold text-blue-400 border border-slate-700">
                     {role}
                   </span>
                 )}
@@ -135,14 +194,14 @@ function AppContent() {
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-8 flex-grow">
+      <main className={`${location.pathname.startsWith('/admin') ? 'w-full flex-grow' : 'container mx-auto px-6 py-8 flex-grow'}`}>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<DoctorListing />} />
           <Route path="/login/*" element={<LoginPage />} />
           <Route path="/register/*" element={<SignupPage />} />
 
-          {/* Patient Routes - Now uses the ProtectedRoute helper */}
+          {/* Protected Routes */}
           <Route
             path="/my-appointments"
             element={
@@ -158,7 +217,21 @@ function AppContent() {
             }
           />
 
-          {/* Placeholder Routes for Member 02 & 03 */}
+          <Route
+            path="/payment-checkout/:appointmentId"
+            element={
+              <SignedIn>
+                <ProtectedRoute
+                  allowedRole="patient"
+                  currentRole={role}
+                  loading={loadingRole}
+                >
+                  <PaymentCheckout />
+                </ProtectedRoute>
+              </SignedIn>
+            }
+          />
+
           <Route
             path="/doctor-dashboard"
             element={
@@ -167,19 +240,65 @@ function AppContent() {
               </SignedIn>
             }
           />
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
           <Route
-            path="/admin-panel"
+            path="/issue-prescription"
             element={
               <SignedIn>
-                <div>Admin Panel</div>
+                <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                  <PrescriptionForm />
+                </ProtectedRoute>
               </SignedIn>
             }
           />
+
+          {/* Video Consultation Room (Shared - Accessible by both signed-in Doctor/Patient) */}
+          <Route
+            path="/video"
+            element={
+              <SignedIn>
+                <VideoRoom />
+              </SignedIn>
+            }
+          />
+
+          <Route path="/payment-status" element={<SignedIn><PaymentStatus /></SignedIn>} />
+          <Route path="/payment/receipt/:paymentId" element={<SignedIn><ReceiptPage /></SignedIn>} />
+
+          {/* Nested Admin Routes */}
+          <Route
+            path="/admin"
+            element={
+              <SignedIn>
+                <ProtectedRoute allowedRole="admin" currentRole={role} loading={loadingRole}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              </SignedIn>
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminOverview />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="doctors" element={<AdminDoctors />} />
+            <Route path="payments" element={<AdminPayments />} />
+            <Route path="notifications" element={<AdminNotifications />} />
+          </Route>
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
+<<<<<<< Updated upstream
       <footer className="py-6 text-center text-slate-400 text-sm">
         &copy; 2026 MediZen - Distributed Systems Assignment
+=======
+      <footer className="py-8 bg-white border-t border-slate-200 text-center text-slate-500 text-sm">
+        &copy; 2026 MediZen Healthcare
+>>>>>>> Stashed changes
       </footer>
     </div>
   );
