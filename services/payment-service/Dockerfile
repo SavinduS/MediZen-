@@ -1,7 +1,19 @@
-FROM node:18-alpine
-WORKDIR /app
+# Base image
+FROM node:18-slim
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Install app dependencies
+# A wildcard is used to ensure both package.json AND package-lock.json are copied
 COPY package*.json ./
 RUN npm install
+
+# Bundle app source
 COPY . .
+
+# Expose service port
 EXPOSE 5007
-CMD ["node", "index.js"]
+
+# Start command
+CMD [ "npm", "start" ]
