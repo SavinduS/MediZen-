@@ -15,20 +15,18 @@ import {
   useUser,
   useAuth,
 } from "@clerk/clerk-react";
-import axios from "axios";
+import { syncUser } from "./services/api";
 
 // Pages
 import DoctorListing from "./pages/DoctorListing";
 import MyAppointments from "./pages/MyAppointments";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
-
 import VideoRoom from "./pages/VideoRoom";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
-
 import PaymentCheckout from "./pages/PaymentCheckout";
 import PaymentStatus from "./pages/PaymentStatus";
 import ReceiptPage from "./pages/ReceiptPage";
@@ -69,15 +67,11 @@ function AppContent() {
 
   // Sync with Backend Auth Service
   useEffect(() => {
-    const syncUser = async () => {
+    const syncBackendUser = async () => {
       if (user) {
         try {
           const token = await getToken();
-          const response = await axios.post(
-            "http://localhost:5001/api/auth/sync",
-            { email: user.primaryEmailAddress.emailAddress },
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
+          const response = await syncUser(user.primaryEmailAddress.emailAddress, token);
           const userRole = response.data.role.toLowerCase();
           setRole(userRole);
 
@@ -101,7 +95,7 @@ function AppContent() {
       }
     };
 
-    if (clerkLoaded) syncUser();
+    if (clerkLoaded) syncBackendUser();
   }, [user, clerkLoaded, getToken, navigate, location.pathname]);
 
   // Protect Admin routes and handle admin landing on home page
@@ -282,27 +276,6 @@ function AppContent() {
             }
           />
 
-           <Route
-              path="/issue-prescription"
-              element={
-                <SignedIn>
-                  <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
-                    <PrescriptionForm />
-                  </ProtectedRoute>
-                </SignedIn>
-              }
-            />
-
-            {/* Video Consultation Room (Shared - Accessible by both signed-in Doctor/Patient) */}
-            <Route
-              path="/video"
-              element={
-                <SignedIn>
-                  <VideoRoom />
-                </SignedIn>
-              }
-            />
-
           <Route
             path="/issue-prescription"
             element={
@@ -351,14 +324,8 @@ function AppContent() {
         </Routes>
       </main>
 
-
-      <footer className="py-6 text-center text-slate-400 text-sm">
-
-        &copy; 2026 MediZen - Distributed Systems Assignment
-
       <footer className="py-8 bg-white border-t border-slate-200 text-center text-slate-500 text-sm">
-        &copy; 2026 MediZen Healthcare
-        &copy; 2026 MediZen
+        &copy; 2026 MediZen Healthcare - Distributed Systems Assignment
       </footer>
     </div>
   );
