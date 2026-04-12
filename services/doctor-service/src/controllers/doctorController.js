@@ -130,6 +130,53 @@ exports.getAllDoctors = async (req, res) => {
     }
 };
 
+// @desc    Verify a Doctor Profile
+// @route   PUT /api/doctors/:id/verify
+// @access  Private (Admin only)
+exports.verifyDoctor = async (req, res) => {
+    try {
+        const doctor = await Doctor.findByIdAndUpdate(
+            req.params.id, 
+            { verified: true }, 
+            { new: true }
+        );
+        
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor profile not found' });
+        }
+
+        res.status(200).json(doctor);
+    } catch (error) {
+        console.error('Error verifying doctor:', error.message);
+        res.status(500).json({ message: 'Server error while verifying doctor' });
+    }
+};
+
+// @desc    Update Doctor Profile
+// @route   PUT /api/doctors/:id
+// @access  Private (Admin only)
+exports.updateDoctor = async (req, res) => {
+    try {
+        const doctor = await Doctor.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
+
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor profile not found' });
+        }
+
+        res.status(200).json({
+            message: 'Doctor profile updated successfully',
+            data: doctor
+        });
+    } catch (error) {
+        console.error('Error updating doctor profile:', error.message);
+        res.status(500).json({ message: 'Server error while updating doctor profile' });
+    }
+};
+
 // @desc    Generate PDF Prescription and Save to DB
 // @route   POST /api/doctors/prescriptions
 exports.issuePrescription = async (req, res) => {
