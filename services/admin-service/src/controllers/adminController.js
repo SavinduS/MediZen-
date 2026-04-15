@@ -305,20 +305,42 @@ const updateUserStatus = async (req, res, next) => {
  */
 const getAllPayments = async (req, res, next) => {
   try {
-    if (!Payment) return successResponse(res, { payments: [], pagination: { total: 0, page: 1, pages: 0 } });
+    if (!Payment) {
+        console.warn(' [Admin Service] Payment model not available for getAllPayments');
+        return successResponse(res, { payments: [], pagination: { total: 0, page: 1, pages: 0 } });
+    }
 
-    const { status, from, to, page, limit } = req.query;
+    const { status, from, to, page, limit, search } = req.query;
     const filter = {};
-    if (status) filter.status = status;
     
+    if (status && status !== 'all' && status !== 'All') {
+        filter.status = status.toLowerCase();
+    }
+    
+    if (search) {
+      filter.$or = [
+        { paymentId: { $regex: search, $options: 'i' } },
+        { patientId: { $regex: search, $options: 'i' } },
+        { txnId: { $regex: search, $options: 'i' } }
+      ];
+    }
+
     const dateRange = getDateFilter(from, to);
     if (dateRange) filter.createdAt = dateRange;
 
     const { skip, limit: l, page: p } = getPagination(page, limit);
     
+    console.log(`[Admin] Querying payments with filter: ${JSON.stringify(filter)}`);
+
     const [payments, total] = await Promise.all([
-      Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(l).lean().catch(() => []),
-      Payment.countDocuments(filter).catch(() => 0)
+      Payment.find(filter).sort({ createdAt: -1 }).skip(skip).limit(l).lean().catch(e => {
+          console.error('[Admin] MongoDB Payment.find Error:', e.message);
+          return [];
+      }),
+      Payment.countDocuments(filter).catch(e => {
+          console.error('[Admin] MongoDB Payment.count Error:', e.message);
+          return 0;
+      })
     ]);
 
     return successResponse(res, {
@@ -327,7 +349,7 @@ const getAllPayments = async (req, res, next) => {
     });
   } catch (error) {
     console.error(' [Admin Service] getAllPayments Exception:', error);
-    next(error);
+    return res.status(500).json({ status: 'error', message: error.message });
   }
 };
 

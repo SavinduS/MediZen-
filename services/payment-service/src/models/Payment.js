@@ -10,6 +10,11 @@ const paymentSchema = new mongoose.Schema({
         required: [true, "Payment ID is required"],
         unique: true
     },
+    receiptNumber: {
+        type: String,
+        unique: true,
+        sparse: true // Only generated upon successful completion
+    },
     appointmentId: {
         type: String,
         required: [true, "Appointment ID is required"]

@@ -27,7 +27,7 @@ import DoctorDashboard from "./pages/DoctorDashboard";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
-import PaymentCheckout from "./pages/PaymentCheckout";
+import PaymentCheckout from "./pages/PaymentCheckout.jsx";
 import PaymentStatus from "./pages/PaymentStatus";
 import ReceiptPage from "./pages/ReceiptPage";
 
@@ -250,55 +250,10 @@ function AppContent() {
             }
           />
 
-          <Route
-            path="/payment-checkout/:appointmentId"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="patient"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <PaymentCheckout />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/doctor-dashboard"
-            element={
-              <SignedIn>
-                <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
-                  <DoctorDashboard />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/issue-prescription"
-            element={
-              <SignedIn>
-                <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
-                  <PrescriptionForm />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          {/* Video Consultation Room (Shared - Accessible by both signed-in Doctor/Patient) */}
-          <Route
-            path="/video"
-            element={
-              <SignedIn>
-                <VideoRoom />
-              </SignedIn>
-            }
-          />
-
-          <Route path="/payment-status" element={<SignedIn><PaymentStatus /></SignedIn>} />
-          <Route path="/payment/receipt/:paymentId" element={<SignedIn><ReceiptPage /></SignedIn>} />
+          {/* Payment Routes */}
+          <Route path="/checkout" element={<PaymentCheckout />} />
+          <Route path="/payment-status" element={<PaymentStatus />} />
+          <Route path="/receipt" element={<ReceiptPage />} />
 
           {/* Nested Admin Routes */}
           <Route

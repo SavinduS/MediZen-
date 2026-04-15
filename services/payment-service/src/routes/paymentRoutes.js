@@ -1,30 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const {
-    initiatePayment,
-    webhookHandler,
-    getPaymentById,
-    getReceipt,
-    completePayment
+const { 
+    createPaymentIntent, 
+    completePayment, 
+    getReceipt, 
+    getPaymentById 
 } = require('../controllers/paymentController');
 
 /**
- * Payment Routes Setup
+ * 🛠️ PAYMENT ROUTES
+ * Port: 5007
+ * Base URL: /api/payments
  */
 
-// Route: Initiate payment record
-router.post('/initiate', initiatePayment);
+// 1. Create Stripe Payment Intent
+router.post('/create-intent', createPaymentIntent);
 
-// Route: Webhook status updates from gateway
-router.post('/webhook', webhookHandler);
-
-// Route: Manual complete for mock flow
+// 2. Finalize Payment (Update status to 'completed' and notify)
 router.post('/:id/complete', completePayment);
 
-// Route: Fetch receipt for a completed payment
+// 3. Get Payment Receipt (PDF)
 router.get('/:id/receipt', getReceipt);
 
-// Route: Get payment details by ID
+// 4. Get Payment Details
 router.get('/:id', getPaymentById);
 
 module.exports = router;

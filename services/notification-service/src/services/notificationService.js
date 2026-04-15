@@ -65,3 +65,26 @@ const processNotification = async ({ userId, type, message, subject, recipient }
 };
 
 module.exports = { processNotification };
+
+const handlePaymentSuccess = async (data) => {
+  try {
+    const smsBody = `Hi ${data.patientName}, your payment of LKR ${data.amount} for ${data.doctorName} is successful. Ref: ${data.receiptNumber}`;
+    await sendSMS(data.phone, smsBody);
+
+    const emailHtml = `<h2>Payment Successful!</h2><p>Dear ${data.patientName}, your appointment is confirmed.</p>`;
+    await sendEmail(data.email, "MediZen Appointment Confirmation", emailHtml, data.receiptUrl, data.receiptNumber);
+
+    await NotificationLog.create({
+      userId: data.userId,
+      type: "BOTH",
+      message: smsBody,
+      status: "sent"
+    });
+    
+    console.log(`✅ Notifications sent for ${data.receiptNumber}`);
+  } catch (err) {
+    console.error("❌ Notification failed:", err.message);
+  }
+};
+
+module.exports = { handlePaymentSuccess };
