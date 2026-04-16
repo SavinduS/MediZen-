@@ -12,6 +12,7 @@ const appointmentAPI = axios.create({ baseURL: 'http://localhost:5004/api/appoin
 const videoAPI = axios.create({ baseURL: 'http://localhost:5006/api/sessions' });
 const paymentAPI = axios.create({ baseURL: 'http://localhost:5007/api/payments' });
 const adminAPI = axios.create({ baseURL: 'http://localhost:5009/api/admin' });
+const symptomAPI = axios.create({ baseURL: 'http://localhost:5005/api/symptom-check' });
 
 // --- AUTH SERVICE CALLS (PORT 5001) ---
 export const syncUser = (email, token) =>
@@ -105,3 +106,4 @@ export const fetchNotificationPrefs = (userId, token) =>
 
 export const updateNotificationPrefs = (data, token) => 
   adminAPI.put('/notifications/prefs', data, { headers: { Authorization: `Bearer ${token}` } });
+ => symptomAPI.post('/', data);

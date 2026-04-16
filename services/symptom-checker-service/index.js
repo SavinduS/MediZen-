@@ -10,6 +10,20 @@ const client = require('prom-client');
 
 const app = express();
 
+// --- Database Connection ---
+mongoose.connect(process.env.MONGO_URI || 'mongodb://mongodb-ai:27017/symptom_db')
+    .then(() => console.log("✅ AI Service connected to MongoDB"))
+    .catch(err => console.error("❌ MongoDB connection error:", err));
+
+// --- SymptomLog Model ---
+const SymptomLogSchema = new mongoose.Schema({
+    clerkId: String,
+    symptomsText: String,
+    aiResponse: String,
+    timestamp: { type: Date, default: Date.now }
+});
+const SymptomLog = mongoose.model('SymptomLog', SymptomLogSchema);
+
 // --- Prometheus Metrics Setup ---
 const register = new client.Registry();
 client.collectDefaultMetrics({ register });
@@ -27,8 +41,20 @@ const symptomSchema = Joi.object({
         'string.min': 'Please provide more detail about your symptoms (min 10 characters).',
         'string.max': 'Symptom description is too long (max 500 characters).',
         'any.required': 'Symptoms text is required.'
-    })
+    }),
+    clerkId: Joi.string().optional()
 });
+
+// --- AI Logic ---
+async function generateAIResponse(prompt) {
+    if (!process.env.GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY is not configured");
+    }
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+}
 
 // --- Middleware ---
 app.use(cors());
@@ -53,22 +79,39 @@ app.post('/api/symptom-check', async (req, res) => {
             });
         }
 
-        const { symptoms } = value;
+        const { symptoms, clerkId } = value;
+        let personalizationContext = "";
+
+        // --- Choice B: Personalized AI logic ---
+        if (clerkId && process.env.PATIENT_SERVICE_URL) {
+            try {
+                const response = await axios.get(`${process.env.PATIENT_SERVICE_URL}/api/patient/internal/${clerkId}`);
+                const patientData = response.data;
+                personalizationContext = `The patient (${patientData.firstName || 'Anonymous'}) has the following known medical context:
+- Blood Group: ${patientData.bloodGroup || 'Unknown'}
+- Allergies: ${patientData.allergies || 'None reported'}
+Please take this context into account for safer and more personalized advice.`;
+            } catch (err) {
+                console.warn("Could not fetch patient personalization data:", err.message);
+                // Continue with generic response if personalization fails
+            }
+        }
 
         const promptText = `
 You are a medical AI assistant for a telemedicine platform named MediZen. 
+${personalizationContext}
 A patient reports these symptoms: "${symptoms}". 
 
 Tasks:
-1. Start with a disclaimer.
+1. Start with a disclaimer that this is not a diagnosis.
 2. Suggest 3 self-care tips.
 3. Recommend one doctor specialty.
 Keep it concise and professional.`;
 
         const aiText = await generateAIResponse(promptText);
 
-        // Save to DB (make sure SymptomLog model exists)
         const newLog = new SymptomLog({
+            clerkId,
             symptomsText: symptoms,
             aiResponse: aiText
         });
@@ -86,7 +129,6 @@ Keep it concise and professional.`;
         console.error("Critical AI Service Error:", error.message);
         aiRequestCounter.inc({ status: 'error' });
 
-        // Handle quota / rate limit
         if (error.message.includes("429") || error.message.includes("Quota")) {
             return res.status(429).json({
                 status: "error",

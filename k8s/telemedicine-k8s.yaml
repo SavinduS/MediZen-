@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: telemedicine-service
-        image: medizen-telemedicine-service:latest
+        image: savindus/medizen-telemedicine-service:latest
         ports:
         - containerPort: 5006
         envFrom:
