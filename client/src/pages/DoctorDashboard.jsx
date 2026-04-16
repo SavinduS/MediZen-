@@ -8,8 +8,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from "@clerk/clerk-react"; // Import Clerk hook to get logged-in user
-import { ClipboardList, Clock, FileText, Video, User, Activity, Settings } from 'lucide-react';
-import { fetchDoctorProfileByUserId } from '../services/api';
+import { ClipboardList, Clock, FileText, Video, User, Activity, Droplets, AlertCircle } from 'lucide-react';
+import { fetchDoctorProfileByUserId, fetchPatientInternalProfile, fetchUserById } from '../services/api';
 import axios from 'axios';
 
 const DoctorDashboard = () => {
@@ -17,6 +17,8 @@ const DoctorDashboard = () => {
     const [appointments, setAppointments] = useState([]);
     const [doctorInfo, setDoctorInfo] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [patientData, setPatientData] = useState({});
+    const [userData, setUserData] = useState({});
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -41,6 +43,26 @@ const DoctorDashboard = () => {
                 );
                 
                 setAppointments(myQueue);
+
+                // 3. Fetch Patient Details and User (Email) Details
+                const patientInfo = {};
+                const userInfo = {};
+                for (const apt of myQueue) {
+                    if (!patientInfo[apt.patientId]) {
+                        try {
+                            const [pRes, uRes] = await Promise.all([
+                                fetchPatientInternalProfile(apt.patientId),
+                                fetchUserById(apt.patientId)
+                            ]);
+                            patientInfo[apt.patientId] = pRes.data;
+                            userInfo[apt.patientId] = uRes.data;
+                        } catch (err) {
+                            console.error(`Failed to fetch details for patient ${apt.patientId}`, err);
+                        }
+                    }
+                }
+                setPatientData(patientInfo);
+                setUserData(userInfo);
                 setLoading(false);
             } catch (error) {
                 console.error("Failed to fetch doctor data:", error);
@@ -103,40 +125,77 @@ const DoctorDashboard = () => {
                                 <p className="text-slate-400 font-medium">Your consultation queue is currently empty.</p>
                             </div>
                         ) : (
-                            appointments.map(apt => (
-                                <div key={apt._id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center group hover:border-blue-500 hover:shadow-xl transition-all duration-500">
-                                    <div className="flex items-center gap-5 mb-4 md:mb-0">
-                                        <div className="bg-slate-50 p-4 rounded-3xl text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                                            <User size={28} />
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="bg-blue-50 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-md border border-blue-100 uppercase">{apt.appointmentId}</span>
+                            appointments.map(apt => {
+                                const patient = patientData[apt.patientId] || {};
+                                const userAccount = userData[apt.patientId] || {};
+                                return (
+                                <div key={apt._id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-blue-500 hover:shadow-xl transition-all duration-500">
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                                        <div className="flex items-center gap-5 mb-4 md:mb-0">
+                                            <div className="bg-slate-50 p-4 rounded-3xl text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                                                <User size={28} />
                                             </div>
-                                            <h4 className="text-xl font-bold text-slate-800 tracking-tight capitalize">ID: {apt.patientId}</h4>
-                                            <p className="text-slate-400 flex items-center gap-1.5 text-xs font-bold mt-1">
-                                                <Clock size={12} className="text-blue-500"/> {new Date(apt.slotTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </p>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="bg-blue-50 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-md border border-blue-100 uppercase">{apt.appointmentId}</span>
+                                                </div>
+                                                <h4 className="text-xl font-bold text-slate-800 tracking-tight lowercase">
+                                                    {userAccount.email || apt.patientId}
+                                                </h4>
+                                                {patient.firstName && (
+                                                    <p className="text-blue-600 text-xs font-bold -mt-1 mb-1 capitalize">
+                                                        Patient: {patient.firstName}
+                                                    </p>
+                                                )}
+                                                <p className="text-slate-400 flex items-center gap-1.5 text-[10px] font-bold">
+                                                    <Clock size={10} className="text-blue-500"/> {new Date(apt.slotTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(apt.slotTime).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-3 w-full md:w-auto">
+                                            <button 
+                                                onClick={() => navigate(`/patient-reports/${apt.patientId}`)}
+                                                className="flex-1 md:flex-none bg-blue-50 text-blue-600 p-4 rounded-2xl hover:bg-blue-100 transition shadow-sm active:scale-95"
+                                                title="View Patient Medical Reports"
+                                            >
+                                                <FileText size={20}/>
+                                            </button>
+                                            <button 
+                                                onClick={() => navigate(`/video?aptId=${apt.appointmentId}&role=doctor`)}
+                                                className="flex-1 md:flex-none bg-slate-900 text-white p-4 rounded-2xl hover:bg-blue-600 transition shadow-lg active:scale-95"
+                                                title="Initialize Secure Video Channel"
+                                            >
+                                                <Video size={20}/>
+                                            </button>
+                                            <button 
+                                                onClick={() => navigate(`/issue-prescription?aptId=${apt.appointmentId}&patientId=${apt.patientId}`)}
+                                                className="flex-1 md:flex-none bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100 active:scale-95"
+                                            >
+                                                Issue Rx
+                                            </button>
                                         </div>
                                     </div>
-                                    
-                                    <div className="flex gap-3 w-full md:w-auto">
-                                        <button 
-                                            onClick={() => navigate(`/video?aptId=${apt.appointmentId}&role=doctor`)}
-                                            className="flex-1 md:flex-none bg-slate-900 text-white p-4 rounded-2xl hover:bg-blue-600 transition shadow-lg active:scale-95"
-                                            title="Initialize Secure Video Channel"
-                                        >
-                                            <Video size={20}/>
-                                        </button>
-                                        <button 
-                                            onClick={() => navigate(`/issue-prescription?aptId=${apt.appointmentId}&patientId=${apt.patientId}`)}
-                                            className="flex-1 md:flex-none bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100 active:scale-95"
-                                        >
-                                            Issue Rx
-                                        </button>
+
+                                    {/* Patient Clinical Summary Bar */}
+                                    <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <Droplets size={16} className="text-red-500" />
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Blood Group</p>
+                                                <p className="text-sm font-bold text-slate-700">{patient.bloodGroup || 'Not Provided'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <AlertCircle size={16} className="text-amber-500" />
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Allergies</p>
+                                                <p className="text-sm font-bold text-slate-700 truncate max-w-[150px]">{patient.allergies || 'None Reported'}</p>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            ))
+                            )})
                         )}
                     </div>
 

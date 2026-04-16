@@ -22,6 +22,7 @@ router.post(
   uploadReport,
 );
 router.get("/reports", ClerkExpressWithAuth(), getReports);
+router.get("/reports/:patientId", getReportsByPatientId);
 router.delete("/reports/:id", ClerkExpressWithAuth(), deleteReport);
 
 module.exports = router;
