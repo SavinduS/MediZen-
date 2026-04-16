@@ -12,6 +12,12 @@ const doctorSchema = new mongoose.Schema({
         required: [true, 'User ID is required'],
         unique: true
     },
+    email: {
+        type: String,
+        required: [true, 'Email is required'],
+        unique: true,
+        lowercase: true
+    },
     // Unique ID for doctor profile within this service
     doctorId: {
         type: String,

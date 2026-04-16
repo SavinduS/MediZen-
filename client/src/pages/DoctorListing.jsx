@@ -64,14 +64,17 @@ const DoctorListing = () => {
 
       const response = await bookAppointment(payload);
       
-      setMessage(`✅ Success! Your appointment ID is ${response.data.data.appointmentId}`);
-      
-      // Auto redirect after success to 'My Appointments' after a brief delay
-      setTimeout(() => {
-        setSelectedDoctor(null);
-        navigate('/my-appointments');
-      }, 2500);
-
+      // Redirect to checkout with full appointment details
+      navigate('/checkout', {
+        state: {
+          appointmentId: response.data.data.appointmentId,
+          doctorId: selectedDoctor.doctorId,
+          doctorName: selectedDoctor.name,
+          doctorSpecialty: selectedDoctor.specialization,
+          appointmentDateTime: bookingData.slotTime,
+          amount: selectedDoctor.fee
+        }
+      });
     } catch (error) {
       const errorMsg = error.response?.data?.message || 'Conflict detected';
       setMessage(`❌ Error: ${errorMsg}`);

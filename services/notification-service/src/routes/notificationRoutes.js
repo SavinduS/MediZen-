@@ -3,8 +3,20 @@ const router = express.Router();
 const {
   sendManualNotification,
   getHistoryByUserId,
-  updatePreferences
+  updatePreferences,
+  getPreferencesByUserId,
+  getAllLogs
 } = require("../controllers/notificationController");
+
+/**
+ * Route: GET /logs
+ */
+router.get("/logs", getAllLogs);
+
+/**
+ * Route: GET /prefs/:userId
+ */
+router.get("/prefs/:userId", getPreferencesByUserId);
 
 /**
  * Route: POST /send

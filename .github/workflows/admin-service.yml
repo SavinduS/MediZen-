@@ -1,14 +1,14 @@
-name: Patient Service CI
+name: Admin Service CI
 
 on:
   push:
     branches: ["main"]
     paths:
-      - "services/patient-service/**" # Trigger only on patient service changes
+      - "services/admin-service/**"
   pull_request:
     branches: ["main"]
     paths:
-      - "services/patient-service/**"
+      - "services/admin-service/**"
   workflow_dispatch:
 
 jobs:
@@ -24,11 +24,11 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
-          cache-dependency-path: "services/patient-service/package-lock.json"
+          cache-dependency-path: "services/admin-service/package-lock.json"
 
       - name: Install dependencies
         run: |
-          cd services/patient-service
+          cd services/admin-service
           npm install
 
       - name: Set up Docker Buildx
@@ -40,12 +40,12 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Build and push Patient Service
+      - name: Build and push Admin Service
         uses: docker/build-push-action@v5
         with:
-          context: ./services/patient-service
-          file: ./services/patient-service/Dockerfile
+          context: ./services/admin-service
+          file: ./services/admin-service/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-patient-service:latest
-            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-patient-service:${{ github.sha }}
+            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-admin-service:latest
+            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-admin-service:${{ github.sha }}

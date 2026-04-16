@@ -4,64 +4,97 @@ const { sendEmail } = require("./emailService");
 const { sendSMS } = require("./smsService");
 
 /**
- * CORE SERVICE: Handle all notification logic
- * Used by both Controllers (REST) and Consumer (RabbitMQ)
+ * General process for various notifications (REST API usage)
  */
-
 const processNotification = async ({ userId, type, message, subject, recipient }) => {
   if (!userId || !type || !message) {
     throw new Error("userId, type, and message are required");
   }
 
-  // 1. Fetch user preferences
   const prefs = await NotificationPreference.findOne({ userId });
-  
-  // 2. Default logic: enable if no prefs record, but check enabled flags
   const isEmailEnabled = prefs ? prefs.emailEnabled : true;
   const isSMSEnabled = prefs ? prefs.smsEnabled : true;
 
-  // 3. Status tracking
   let status = "sent";
   let errorMessage = null;
 
   try {
     if (type === "email") {
-      if (!isEmailEnabled) throw new Error(`User ${userId} has disabled email`);
-      if (!recipient) throw new Error(`Recipient required for email`);
+      if (!isEmailEnabled) throw new Error(`Email disabled for user`);
       await sendEmail(recipient, subject, message);
     } else if (type === "sms") {
-      if (!isSMSEnabled) throw new Error(`User ${userId} has disabled SMS`);
-      if (!recipient) throw new Error(`Recipient required for SMS`);
-      await sendSMS(recipient, message);
+      if (!isSMSEnabled) throw new Error(`SMS disabled for user`);
+      const result = await sendSMS(recipient, message);
+      status = result.status || "sent";
     } else {
       throw new Error(`Invalid type: ${type}`);
     }
   } catch (err) {
     status = "failed";
     errorMessage = err.message;
-    console.error(`[Service Execution Failure] ${err.message}`);
-    // Don't rethrow yet, we want to log the failure
   }
 
-  // 4. Save to LOGS
-  console.log(`💾 Attempting to save notification log for user ${userId}...`);
+  // Save to Database Logs
   try {
-    const log = await NotificationLog.create({
+    await NotificationLog.create({
       logId: `LOG-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       userId,
-      type,
+      type: type === 'BOTH' ? 'email' : type, // Fix Enum validation
       message,
       status,
       sentAt: new Date()
     });
-    console.log(`✅ Notification log saved: ${log.logId} in collection 'logs'`);
-  } catch (err) {
-    console.error(`❌ Failed to save notification log: ${err.message}`);
-    // We don't throw here to avoid failing the whole request if only logging fails
-    // but in a production app, we might want to handle this more strictly
+  } catch (dbErr) {
+    console.error(`❌ DB Logging Error: ${dbErr.message}`);
   }
 
   return { success: status === "sent", error: errorMessage };
 };
 
-module.exports = { processNotification };
+/**
+ * Specific handler for RabbitMQ 'PAYMENT_SUCCESS' event
+ */
+const handlePaymentSuccess = async (data) => {
+  const { email, phone, patientName, doctorName, amount, receiptNumber, receiptUrl, userId } = data;
+
+  console.log(`🚀 Processing notifications for ${receiptNumber}`);
+
+  const smsBody = `Hi ${patientName}, your payment of LKR ${amount} for ${doctorName} is successful. Ref: ${receiptNumber}`;
+  const emailHtml = `<h2>Payment Successful!</h2><p>Dear ${patientName}, your appointment with ${doctorName} is confirmed.</p><p>Receipt Number: <strong>${receiptNumber}</strong></p>`;
+
+  let smsStatus = 'sent';
+  let emailStatus = 'sent';
+
+  // 1. Try SMS
+  try {
+    const result = await sendSMS(phone, smsBody);
+    smsStatus = result.status || 'sent';
+  } catch (smsErr) {
+    smsStatus = 'failed';
+    console.error(`[SMS Error]`, smsErr.message);
+  }
+
+  // 2. Try Email
+  try {
+    await sendEmail(email, 'MediZen Appointment Confirmation', emailHtml, receiptUrl, receiptNumber);
+  } catch (emailErr) {
+    emailStatus = 'failed';
+    console.error(`[Email Error]`, emailErr.message);
+  }
+
+  // 3. Final Audit Log
+  try {
+    await NotificationLog.create({
+      logId: `LOG-${Date.now()}`,
+      userId: userId || "user_123",
+      type: "sms", // Primary type for this log entry
+      message: smsBody,
+      status: (smsStatus === 'failed' || emailStatus === 'failed') ? 'failed' : smsStatus
+    });
+    console.log("📝 Notification logged to Database.");
+  } catch (logErr) {
+    console.error("❌ DB Audit Log Error:", logErr.message);
+  }
+};
+
+module.exports = { processNotification, handlePaymentSuccess };

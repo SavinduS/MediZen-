@@ -1,222 +1,282 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { fetchPaymentById, downloadReceipt } from "../services/api";
-import { 
-  FileText, 
-  Download, 
-  ArrowLeft, 
-  Printer, 
-  ShieldCheck, 
-  Clock,
+import React, { useState } from "react";
+import axios from "axios";
+import { useLocation, Link } from "react-router-dom";
+import {
+  Download,
+  Printer,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  FileText,
+  ShieldCheck,
   CheckCircle2,
-  Loader2
 } from "lucide-react";
 
-const ReceiptPage = () => {
-  const { paymentId } = useParams();
-  const [loading, setLoading] = useState(true);
-  const [payment, setPayment] = useState(null);
-  const [receipt, setReceipt] = useState(null);
+export default function ReceiptPage() {
+  const location = useLocation();
+
+  const {
+    transactionId,
+    transactionDisplayId,
+    referenceNumber,
+    paymentId,
+    amount,
+    date,
+    doctorName,
+    doctorSpecialty,
+  } = location.state || {};
+
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [downloading, setDownloading] = useState(false);
 
-  useEffect(() => {
-    const getReceiptData = async () => {
-      try {
-        setLoading(true);
-        // 1. Get payment details
-        const payRes = await fetchPaymentById(paymentId);
-        setPayment(payRes.data.data);
+  const consultationFee =
+    Number(amount || 0) > 500 ? Number(amount || 0) - 500 : Number(amount || 0);
+  const serviceFee = Number(amount || 0) > 500 ? 500 : 0;
 
-        // 2. Get receipt details (metadata)
-        const recRes = await downloadReceipt(paymentId);
-        setReceipt(recRes.data.data);
-      } catch (err) {
-        console.error("Error fetching receipt:", err);
-        setError("Failed to load receipt details. The payment may still be processing.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const displayReference = referenceNumber || paymentId || "N/A";
+  const displayTransaction = transactionDisplayId || transactionId || "N/A";
+  const idToUse = paymentId || transactionId;
 
-    if (paymentId) getReceiptData();
-  }, [paymentId]);
+  const handleDownload = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await axios.get(
+        `http://localhost:5007/api/payments/${idToUse}/receipt`,
+        {
+          responseType: "blob",
+        }
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `MediZen_Receipt_${displayReference}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError("Could not generate PDF receipt. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
   };
 
-  const handleDownload = () => {
-    setDownloading(true);
-    // Mock download behavior
-    setTimeout(() => {
-      if (receipt?.pdfUrl) {
-        window.open(receipt.pdfUrl, '_blank');
-      }
-      setDownloading(false);
-    }, 1500);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Generating your digital receipt...</p>
-      </div>
-    );
-  }
-
-  if (error || !payment) {
-    return (
-      <div className="max-w-2xl mx-auto my-12 p-8 bg-white rounded-3xl shadow-sm border border-slate-100 text-center">
-        <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4 text-rose-500">
-           <FileText className="w-8 h-8" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Receipt Not Found</h2>
-        <p className="text-slate-500 mb-6">{error}</p>
-        <Link to="/my-appointments" className="inline-flex items-center gap-2 text-blue-600 font-bold hover:underline">
-          <ArrowLeft className="w-4 h-4" /> Back to Appointments
-        </Link>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-3xl mx-auto my-8 px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Header Actions */}
-      <div className="flex justify-between items-center mb-6 no-print">
-        <Link to="/my-appointments" className="flex items-center gap-2 text-slate-500 hover:text-slate-900 font-semibold transition">
-          <ArrowLeft className="w-4 h-4" /> Back
+    <div className="min-h-screen bg-slate-50 px-4 py-10 font-sans">
+      <div className="mx-auto max-w-4xl">
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 transition-colors hover:text-blue-600"
+        >
+          <ArrowLeft size={16} />
+          Back to Dashboard
         </Link>
-        <div className="flex gap-3">
-          <button 
-            onClick={handlePrint}
-            className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition shadow-sm"
-          >
-            <Printer className="w-4 h-4" /> Print
-          </button>
-          <button 
-            onClick={handleDownload}
-            disabled={downloading}
-            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-blue-700 transition shadow-md disabled:opacity-50"
-          >
-            {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Download PDF
-          </button>
-        </div>
-      </div>
 
-      {/* Actual Receipt Card */}
-      <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 print:shadow-none print:border-none">
-        {/* Top Header */}
-        <div className="bg-slate-900 p-8 text-white relative">
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">MediZen <span className="text-blue-400">Healthcare</span></h1>
-              <p className="text-slate-400 mt-1 font-medium">Official Payment Receipt</p>
-            </div>
-            <div className="text-right">
-              <StatusBadge label="Paid" />
-              <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-widest">Receipt # {receipt?.receiptId || 'N/A'}</p>
-            </div>
-          </div>
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
-        </div>
+        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl print:shadow-none">
+          {/* Header */}
+          <div className="border-b border-slate-200 bg-gradient-to-r from-slate-900 to-slate-800 px-8 py-8 text-white md:px-10">
+            <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="rounded-2xl bg-white/10 p-3 backdrop-blur">
+                  <FileText size={28} />
+                </div>
 
-        <div className="p-8 space-y-8">
-          {/* Main Info */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b pb-2">Patient Details</h3>
-              <div className="space-y-1">
-                <p className="text-lg font-bold text-slate-900">{payment.patientName || 'MediZen Patient'}</p>
-                <p className="text-sm text-slate-500">ID: {payment.patientId}</p>
-                <p className="text-sm text-slate-500">{payment.email || 'No email provided'}</p>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-blue-200">
+                    MediZen Smart Healthcare
+                  </p>
+                  <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
+                    Payment Receipt
+                  </h1>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Official confirmation of payment for your consultation booking.
+                  </p>
+                </div>
               </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b pb-2">Payment Details</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Date</p>
-                  <p className="text-sm font-bold text-slate-700">{new Date(payment.createdAt).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Method</p>
-                  <p className="text-sm font-bold text-slate-700 capitalize">{payment.gateway || 'Card'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Txn ID</p>
-                  <p className="text-sm font-bold text-slate-700 font-mono truncate">{payment.txnId}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Status</p>
-                  <p className="text-sm font-bold text-emerald-600">Success</p>
-                </div>
+
+              <div className="flex items-center gap-2 self-start rounded-full bg-emerald-500/15 px-4 py-2 text-emerald-300 ring-1 ring-emerald-400/20">
+                <CheckCircle2 size={16} />
+                <span className="text-xs font-bold uppercase tracking-widest">
+                  Paid
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Table */}
-          <div className="border border-slate-100 rounded-2xl overflow-hidden mt-8">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  <th className="px-6 py-4">Description</th>
-                  <th className="px-6 py-4 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                <tr>
-                  <td className="px-6 py-5">
-                    <p className="font-bold text-slate-900 text-base">Medical Consultation Fee</p>
-                    <p className="text-sm text-slate-500">Appointment Ref: {payment.appointmentId}</p>
-                  </td>
-                  <td className="px-6 py-5 text-right font-bold text-slate-900 text-lg">
-                    {payment.currency} {payment.amount.toLocaleString()}
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-900 text-white font-bold">
-                  <td className="px-6 py-5 uppercase tracking-[0.2em] text-xs">Total Amount Paid</td>
-                  <td className="px-6 py-5 text-right text-2xl tracking-tight">
-                    {payment.currency} {payment.amount.toLocaleString()}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+          {/* Body */}
+          <div className="px-8 py-8 md:px-10 md:py-10">
+            {/* Top info */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <InfoCard label="Reference No" value={displayReference} mono />
+              <InfoCard label="Transaction ID" value={displayTransaction} mono />
+              <InfoCard
+                label="Payment Date"
+                value={date ? new Date(date).toLocaleDateString() : "N/A"}
+              />
+              <InfoCard label="Payment Method" value="Stripe Card Payment" />
+            </div>
+
+            {/* Patient/appointment + receipt summary */}
+            <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+                <h2 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-700">
+                  Consultation Details
+                </h2>
+
+                <div className="mt-5 space-y-4">
+                  <Row
+                    label="Service"
+                    value="Tele-Consultation Appointment"
+                  />
+                  <Row
+                    label="Doctor"
+                    value={doctorName ? `Dr. ${doctorName}` : "Assigned Doctor"}
+                  />
+                  <Row
+                    label="Specialty"
+                    value={doctorSpecialty || "General Consultation"}
+                  />
+                  <Row
+                    label="Status"
+                    value="Payment Completed"
+                    valueClass="text-emerald-600 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-6">
+                <h2 className="text-sm font-extrabold uppercase tracking-[0.18em] text-slate-700">
+                  Amount Summary
+                </h2>
+
+                <div className="mt-5 space-y-4">
+                  <AmountRow
+                    label="Consultation Fee"
+                    value={`LKR ${consultationFee.toLocaleString()}`}
+                  />
+                  <AmountRow
+                    label="Platform / Service Fee"
+                    value={`LKR ${serviceFee.toLocaleString()}`}
+                  />
+
+                  <div className="border-t border-dashed border-slate-300 pt-4">
+                    <AmountRow
+                      label="Total Paid"
+                      value={`LKR ${Number(amount || 0).toLocaleString()}`}
+                      strong
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="mt-6 flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-600">
+                <AlertCircle size={18} />
+                {error}
+              </div>
+            )}
+
+            {/* Security note */}
+            <div className="mt-8 flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-4 text-sm text-slate-700">
+              <ShieldCheck size={18} className="mt-0.5 text-blue-600" />
+              <p>
+                This receipt was generated electronically by MediZen. It serves as
+                a valid proof of payment and does not require a physical signature.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-8 flex flex-col gap-3 md:flex-row">
+              <button
+                onClick={handleDownload}
+                disabled={loading}
+                className="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 px-6 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-blue-100 transition hover:bg-blue-700 disabled:opacity-60"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin" size={18} />
+                ) : (
+                  <Download size={18} />
+                )}
+                {loading ? "Generating PDF..." : "Download PDF"}
+              </button>
+
+              <button
+                onClick={handlePrint}
+                className="inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 text-sm font-bold uppercase tracking-wider text-slate-700 transition hover:bg-slate-50"
+              >
+                <Printer size={18} />
+                Print Receipt
+              </button>
+            </div>
           </div>
 
-          {/* Verification Footer */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t border-slate-100 opacity-60">
-            <div className="flex items-center gap-3">
-               <ShieldCheck className="w-10 h-10 text-emerald-500" />
-               <div>
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-900">Secure Payment Verified</p>
-                 <p className="text-[9px] text-slate-500">This is a system-generated digital receipt for MediZen Healthcare services.</p>
-               </div>
-            </div>
-            <div className="text-center md:text-right">
-               <CheckCircle2 className="w-8 h-8 text-blue-500 mb-1 inline-block md:block" />
-               <p className="text-[9px] font-bold uppercase text-slate-400">Valid Digital Signature</p>
-            </div>
+          {/* Footer */}
+          <div className="border-t border-slate-200 bg-slate-50 px-8 py-5 text-center text-xs text-slate-500 md:px-10">
+            For support, contact{" "}
+            <span className="font-semibold text-slate-700">support@medizen.com</span>{" "}
+            or call <span className="font-semibold text-slate-700">+94 11 234 5678</span>
           </div>
         </div>
       </div>
-      
-      <p className="text-center text-xs text-slate-400 mt-8 mb-12 no-print">
-        Questions? Contact our support at <span className="text-slate-600 font-bold">support@medizen.com</span>
+    </div>
+  );
+}
+
+function InfoCard({ label, value, mono = false }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+        {label}
+      </p>
+      <p
+        className={`mt-2 break-words text-sm font-bold text-slate-800 ${
+          mono ? "font-mono text-[13px]" : ""
+        }`}
+      >
+        {value}
       </p>
     </div>
   );
-};
+}
 
-// Reusing badge styling from previous work
-const StatusBadge = ({ label }) => (
-  <span className="inline-flex items-center bg-emerald-500 text-white rounded-full px-4 py-1 text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-emerald-500/20">
-    {label}
-  </span>
-);
+function Row({ label, value, valueClass = "" }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-3 last:border-b-0 last:pb-0">
+      <span className="text-sm font-semibold text-slate-500">{label}</span>
+      <span className={`text-right text-sm text-slate-800 ${valueClass}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
 
-export default ReceiptPage;
+function AmountRow({ label, value, strong = false }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span
+        className={`text-sm ${
+          strong ? "font-extrabold text-slate-900" : "font-semibold text-slate-500"
+        }`}
+      >
+        {label}
+      </span>
+      <span
+        className={`text-right ${
+          strong
+            ? "text-xl font-extrabold text-blue-600"
+            : "text-sm font-bold text-slate-800"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}

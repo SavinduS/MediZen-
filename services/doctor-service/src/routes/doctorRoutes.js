@@ -8,8 +8,16 @@ const doctorController = require('../controllers/doctorController');
 
 // --- DOCTOR PROFILE ROUTES ---
 router.post('/', doctorController.createDoctorProfile); // Create Profile
+router.get('/admin/all', doctorController.getAdminDoctors); // Admin: View all
+router.post('/admin/add', doctorController.addDoctorAdmin); // Admin: Add
+router.put('/admin/:id', doctorController.updateDoctor);    // Admin: Update (Using existing update logic)
+router.delete('/admin/:id', doctorController.deleteDoctorAdmin); // Admin: Delete
 router.get('/', doctorController.getAllDoctors);       // Search Doctors
-router.put('/:id', doctorController.updateDoctor);     // Update Profile
+router.get('/user/:userId', doctorController.getDoctorByUserId); // Get Profile by User ID
+router.get('/:id', doctorController.getDoctorById);    // Get Detailed Profile
+router.put('/:id', doctorController.updateDoctorProfile); // Update Profile
+router.delete('/:id', doctorController.deleteDoctorProfile); // Delete Profile
+router.put('/:id', doctorController.updateDoctor);     // Update Profile (Legacy support)
 
 // --- AVAILABILITY ROUTES ---
 
