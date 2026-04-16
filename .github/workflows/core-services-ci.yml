@@ -1,0 +1,74 @@
+name: MediZen Core Services CI
+
+# Professional Workflow to automate Build and Docker Validation 
+# only for Member 2's services (Doctor, Appointment, and Telemedicine).
+
+on:
+  push:
+    branches: [ "clinical-consultation-suite", "main" ]
+    # Filter: Trigger only when files in these specific folders are changed
+    paths:
+      - 'services/doctor-service/**'
+      - 'services/appointment-service/**'
+      - 'services/telemedicine-service/**'
+  
+  pull_request:
+    branches: [ "main" ]
+    # Filter: Trigger only when a PR affects Member 2's specific folders
+    paths:
+      - 'services/doctor-service/**'
+      - 'services/appointment-service/**'
+      - 'services/telemedicine-service/**'
+
+jobs:
+  # Phase 1: Source Code Integrity Check
+  verify-source:
+    name: Build & Verify Node.js Source
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        # These are the clinical and consultation engine microservices
+        service: [doctor-service, appointment-service, telemedicine-service]
+
+    steps:
+    - name: Checkout Code from Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js Environment (v20)
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+
+    - name: Install Microservice Dependencies
+      run: |
+        cd services/${{ matrix.service }}
+        npm install
+
+    - name: Static Code Analysis (Syntax Validation)
+      run: |
+        cd services/${{ matrix.service }}
+        # Performs a dry-run syntax check of the entry script
+        node --check src/index.js
+
+  # Phase 2: Container Readiness Validation
+  validate-docker:
+    name: Docker Image Build Test
+    needs: verify-source
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        service: [doctor-service, appointment-service, telemedicine-service]
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Test Docker Container Build (Dry Run)
+      run: |
+        # Verifies that the Dockerfile for the specific service is valid
+        docker build -t medizen-${{ matrix.service }}:validated ./services/${{ matrix.service }}

@@ -21,4 +21,7 @@ spec:
         - name: MONGO_URI
           value: "mongodb://mongodb-ai-service:27017/symptom_db" 
         - name: GEMINI_API_KEY
-          value: "AIzaSyCp6LThGCa3BBhsRK2Z1aQGhr9129waE-w" 
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: GEMINI_API_KEY

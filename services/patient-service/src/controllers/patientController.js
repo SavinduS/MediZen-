@@ -126,5 +126,6 @@ module.exports = {
   uploadReport,
   getReports,
   deleteReport,
+
   getInternalProfile
 };

@@ -1,7 +1,17 @@
-FROM node:18-alpine
-WORKDIR /usr/src/app
+# Stage 1: Build
+FROM node:20-alpine AS build
+WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --production
+
+# Stage 2: Runtime
+FROM node:20-alpine
+WORKDIR /app
+COPY --from=build /app/node_modules ./node_modules
 COPY . .
+
+# Security: Run as non-root user
+USER node
+
 EXPOSE 5005
 CMD ["npm", "start"]
