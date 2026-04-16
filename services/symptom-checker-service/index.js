@@ -4,7 +4,18 @@ const mongoose = require('mongoose');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
+const Joi = require('joi');
+
 const app = express();
+
+// Validation Schema
+const symptomSchema = Joi.object({
+    symptoms: Joi.string().min(10).max(500).required().messages({
+        'string.min': 'Please provide more detail about your symptoms (min 10 characters).',
+        'string.max': 'Symptom description is too long (max 500 characters).',
+        'any.required': 'Symptoms text is required.'
+    })
+});
 
 // Middleware
 app.use(cors());
@@ -88,11 +99,13 @@ async function generateAIResponse(prompt) {
 
 app.post('/api/symptom-check', async (req, res) => {
     try {
-        const { symptoms } = req.body;
+        const { error, value } = symptomSchema.validate(req.body);
 
-        if (!symptoms) {
-            return res.status(400).json({ status: "error", message: "Symptoms text is required." });
+        if (error) {
+            return res.status(400).json({ status: "error", message: error.details[0].message });
         }
+
+        const { symptoms } = value;
 
         const promptText = `
         You are a medical AI assistant for a telemedicine platform named MediZen. 

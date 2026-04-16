@@ -1,63 +1,22 @@
 services:
-  auth-service:
-    build: ./services/auth-service
+  # Databases & Infrastructure
+  mongo-db:
+    image: mongo:latest
+    container_name: mongo-db
     ports:
-      - "5001:5001"
-    environment:
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - MONGO_URI=mongodb://mongo-db:27017/users
-    depends_on:
-      - mongo-db
+      - "27018:27017"
+    volumes:
+      - mongo-db-data:/data/db
+    networks:
+      - medizen-network
 
-  patient-service:
-    build: ./services/patient-service
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
     ports:
-      - "5002:5002"
-    env_file:
-      - ./services/patient-service/.env
-    depends_on:
-      - mongo-db
-
-  # --- Member 2: Doctor Management Service ---
-  doctor-service:
-    build: ./services/doctor-service
-    ports:
-      - "5003:5003"
-    env_file:
-      - ./services/doctor-service/.env
-    depends_on:
-      - mongodb
-
-  # --- Member 2: Appointment Service ---
-  appointment-service:
-    build: ./services/appointment-service
-    ports:
-      - "5004:5004"
-    env_file:
-      - ./services/appointment-service/.env
-    depends_on:
-      - mongodb
-
-  # --- Member 2: Telemedicine Service ---
-  telemedicine-service:
-    build: ./services/telemedicine-service
-    ports:
-      - "5006:5006"
-    env_file:
-      - ./services/telemedicine-service/.env
-    depends_on:
-      - mongodb
-
-  # --- Member 4: AI Symptom Checker Service ---
-  symptom-checker:
-    build: ./services/symptom-checker-service
-    ports:
-      - "5005:5005"
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
-    depends_on:
-      - mongodb-ai
+      - "27019:27017"
+    volumes:
+      - mongodb-data:/data/db
     networks:
       - medizen-network
 
@@ -71,9 +30,140 @@ services:
     networks:
       - medizen-network
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - medizen-network
+
+  # Services
+  auth-service:
+    build: ./services/auth-service
+    ports:
+      - "5001:5001"
+    environment:
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - MONGO_URI=mongodb://mongo-db:27017/users
+    depends_on:
+      - mongo-db
+    networks:
+      - medizen-network
+
+  patient-service:
+    build: ./services/patient-service
+    ports:
+      - "5002:5002"
+    environment:
+      - MONGO_URI=mongodb://mongo-db:27017/patient_db
+    depends_on:
+      - mongo-db
+    networks:
+      - medizen-network
+
+  doctor-service:
+    build: ./services/doctor-service
+    ports:
+      - "5003:5003"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/doctor_db
+    depends_on:
+      - mongodb
+    networks:
+      - medizen-network
+
+  appointment-service:
+    build: ./services/appointment-service
+    ports:
+      - "5004:5004"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/appointment_db
+      - RABBITMQ_URL=amqp://rabbitmq
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - medizen-network
+
+  symptom-checker:
+    build: ./services/symptom-checker-service
+    ports:
+      - "5005:5005"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
+    depends_on:
+      - mongodb-ai
+    networks:
+      - medizen-network
+
+  telemedicine-service:
+    build: ./services/telemedicine-service
+    ports:
+      - "5006:5006"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/telemedicine_db
+    depends_on:
+      - mongodb
+    networks:
+      - medizen-network
+
+  payment-service:
+    build: ./services/payment-service
+    ports:
+      - "5007:5007"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/payment_db
+      - RABBITMQ_URL=amqp://rabbitmq
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - medizen-network
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "5008:5008"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/notification_db
+      - RABBITMQ_URL=amqp://rabbitmq
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - medizen-network
+
+  admin-service:
+    build: ./services/admin-service
+    ports:
+      - "5009:5009"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/admin_db
+    depends_on:
+      - mongodb
+    networks:
+      - medizen-network
+
+  client:
+    build: ./client
+    ports:
+      - "5173:80"
+    depends_on:
+      - auth-service
+      - patient-service
+      - doctor-service
+      - appointment-service
+    networks:
+      - medizen-network
+
 networks:
   medizen-network:
     driver: bridge
 
 volumes:
+  mongo-db-data:
+  mongodb-data:
   symptom-data:
