@@ -37,6 +37,14 @@ export const fetchMedicalReports = (token) =>
 
 // --- DOCTOR SERVICE CALLS (PORT 5003) ---
 export const fetchDoctors = () => doctorAPI.get('/');
+export const fetchDoctorProfile = (id) => doctorAPI.get(`/${id}`);
+export const fetchDoctorProfileByUserId = (userId) => doctorAPI.get(`/user/${userId}`);
+export const updateDoctorProfile = (id, data) => doctorAPI.put(`/${id}`, data);
+export const deleteDoctorProfile = (id) => doctorAPI.delete(`/${id}`);
+export const getDoctorAvailability = (id) => doctorAPI.get(`/${id}/availability`);
+export const updateDoctorAvailability = (id, slots) => doctorAPI.put(`/${id}/availability`, { slots });
+
+const doctorSlotsAPI = axios.create({ baseURL: 'http://localhost:5004/api/doctors' });
 
 export const registerDoctor = (data, token) =>
   doctorAPI.post('/', data, { headers: { Authorization: `Bearer ${token}` } });
@@ -44,6 +52,8 @@ export const registerDoctor = (data, token) =>
 // --- APPOINTMENT SERVICE CALLS (PORT 5004) ---
 export const bookAppointment = (data) => appointmentAPI.post('/', data);
 export const fetchPatientAppointments = (id) => appointmentAPI.get(`/patient/${id}`);
+export const fetchAvailableSlots = (doctorId, date) => doctorSlotsAPI.get(`/${doctorId}/slots?date=${date}`);
+export const cancelAppointment = (id) => appointmentAPI.delete(`/${id}`);
 
 // --- TELEMEDICINE SERVICE CALLS (PORT 5006) ---
 export const generateVideoToken = (aptId) => videoAPI.post('/token', { appointmentId: aptId });
