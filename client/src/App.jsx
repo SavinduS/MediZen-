@@ -307,7 +307,14 @@ function AppContent() {
                 </ProtectedRoute>
               </SignedIn>
             }
-          />
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminOverview />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="doctors" element={<AdminDoctors />} />
+            <Route path="payments" element={<AdminPayments />} />
+            <Route path="notifications" element={<AdminNotifications />} />
+          </Route>
 
            <Route
               path="/issue-prescription"
@@ -340,14 +347,6 @@ function AppContent() {
                 </SignedIn>
               }
             />
-          >
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<AdminOverview />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="doctors" element={<AdminDoctors />} />
-            <Route path="payments" element={<AdminPayments />} />
-            <Route path="notifications" element={<AdminNotifications />} />
-          </Route>
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
