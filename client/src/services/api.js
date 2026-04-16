@@ -17,8 +17,8 @@ const adminAPI = axios.create({ baseURL: 'http://localhost:5009/api/admin' });
 export const syncUser = (email, token) =>
   authAPI.post('/sync', { email }, { headers: { Authorization: `Bearer ${token}` } });
 
-export const fetchUserById = (id) =>
-  authAPI.get(`/users/${id}`);
+export const fetchAllAuthUsers = () =>
+  authAPI.get('/users');
 
 // --- PATIENT SERVICE CALLS (PORT 5002) ---
 export const fetchPatientProfile = (token) =>

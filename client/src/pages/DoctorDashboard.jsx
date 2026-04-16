@@ -5,64 +5,66 @@
  * Integrated with Clerk Auth (Member 1).
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from "@clerk/clerk-react"; // Import Clerk hook to get logged-in user
-import { ClipboardList, Clock, FileText, Video, User, Activity, Droplets, AlertCircle } from 'lucide-react';
-import { fetchDoctorProfileByUserId, fetchPatientInternalProfile, fetchUserById } from '../services/api';
+import { useUser } from "@clerk/clerk-react"; 
+import { ClipboardList, Clock, FileText, Video, User, Activity, Droplets, AlertCircle, Hash } from 'lucide-react';
+import { fetchDoctorProfileByUserId, fetchPatientInternalProfile, fetchAllAuthUsers } from '../services/api';
 import axios from 'axios';
 
 const DoctorDashboard = () => {
-    const { user } = useUser(); // Access Clerk user object
+    const { user } = useUser();
     const [appointments, setAppointments] = useState([]);
+    const [allAppointments, setAllAppointments] = useState([]);
     const [doctorInfo, setDoctorInfo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [patientData, setPatientData] = useState({});
-    const [userData, setUserData] = useState({});
+    const [usersMap, setUsersMap] = useState({});
     const navigate = useNavigate();
 
     useEffect(() => {
-        /**
-         * Fetch current appointment queue from the Appointment Service (Port 5004)
-         */
         const fetchDoctorQueue = async () => {
             try {
-                // 1. First, get the logged-in doctor's profile to find their internal doctorId
+                // 1. Get the logged-in doctor's profile
                 const profileRes = await fetchDoctorProfileByUserId(user.id);
                 const currentDoctor = profileRes.data;
                 setDoctorInfo(currentDoctor);
 
-                // 2. Requesting all appointments from the shared microservice
-                const response = await axios.get('http://localhost:5004/api/appointments');
+                // 2. Fetch all appointments and users in parallel for efficiency
+                const [appointmentsRes, authUsersRes] = await Promise.all([
+                    axios.get('http://localhost:5004/api/appointments'),
+                    fetchAllAuthUsers()
+                ]);
                 
-                /**
-                 * Logic: Filter appointments to show ONLY those matching this doctor's ID
-                 */
-                const myQueue = response.data.filter(apt => 
+                const allApts = appointmentsRes.data;
+                setAllAppointments(allApts);
+
+                // Map auth users by clerkId for O(1) email lookup
+                const uMap = {};
+                authUsersRes.data.data.forEach(u => {
+                    uMap[u.clerkId] = u;
+                });
+                setUsersMap(uMap);
+
+                // Filter for this doctor's queue
+                const myQueue = allApts.filter(apt => 
                     apt.doctorId === currentDoctor.doctorId || apt.doctorId === currentDoctor._id.toString()
                 );
-                
                 setAppointments(myQueue);
 
-                // 3. Fetch Patient Details and User (Email) Details
+                // 3. Fetch Patient Internal Details (Blood group, allergies)
                 const patientInfo = {};
-                const userInfo = {};
                 for (const apt of myQueue) {
                     if (!patientInfo[apt.patientId]) {
                         try {
-                            const [pRes, uRes] = await Promise.all([
-                                fetchPatientInternalProfile(apt.patientId),
-                                fetchUserById(apt.patientId)
-                            ]);
+                            const pRes = await fetchPatientInternalProfile(apt.patientId);
                             patientInfo[apt.patientId] = pRes.data;
-                            userInfo[apt.patientId] = uRes.data;
                         } catch (err) {
                             console.error(`Failed to fetch details for patient ${apt.patientId}`, err);
                         }
                     }
                 }
                 setPatientData(patientInfo);
-                setUserData(userInfo);
                 setLoading(false);
             } catch (error) {
                 console.error("Failed to fetch doctor data:", error);
@@ -73,11 +75,20 @@ const DoctorDashboard = () => {
         if (user) fetchDoctorQueue();
     }, [user]);
 
+    // Calculate appointment counts per patient across the entire system
+    const appointmentStats = useMemo(() => {
+        const stats = {};
+        allAppointments.forEach(apt => {
+            stats[apt.patientId] = (stats[apt.patientId] || 0) + 1;
+        });
+        return stats;
+    }, [allAppointments]);
+
     if (loading) return (
         <div className="flex justify-center items-center h-screen bg-slate-50">
             <div className="flex flex-col items-center gap-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-                <div className="text-blue-600 font-bold tracking-widest">SECURE DATA SYNC...</div>
+                <div className="text-blue-600 font-bold tracking-widest uppercase">Initializing Clinical Hub...</div>
             </div>
         </div>
     );
@@ -86,12 +97,11 @@ const DoctorDashboard = () => {
         <div className="min-h-screen bg-slate-50 p-6 md:p-10">
             <div className="max-w-6xl mx-auto">
                 
-                {/* DASHBOARD HEADER - Dynamic Data from Clerk */}
                 <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
                     <div>
                         <h2 className="text-4xl font-black text-slate-900 tracking-tight">Clinical Hub</h2>
                         <p className="text-slate-500 font-medium italic">
-                            Logged in as: <span className="text-blue-600 font-bold">{user?.fullName || "Medical Professional"}</span>
+                            Medical Officer: <span className="text-blue-600 font-bold">{user?.fullName || "Professional"}</span>
                         </p>
                     </div>
                     <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200">
@@ -99,19 +109,18 @@ const DoctorDashboard = () => {
                             <Activity size={20}/>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">System Node</span>
-                            <span className="text-xs font-bold text-slate-700">ONLINE_CORE_M2</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Node Status</span>
+                            <span className="text-xs font-bold text-slate-700">ONLINE_SECURE</span>
                         </div>
                     </div>
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     
-                    {/* LEFT SECTION: PATIENT QUEUE */}
                     <div className="lg:col-span-2 space-y-6">
                         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                             <h3 className="flex items-center gap-2 text-xl font-bold text-slate-800">
-                                <ClipboardList className="text-blue-600" /> Pending Consultation Queue
+                                <ClipboardList className="text-blue-600" /> Consultation Queue
                             </h3>
                             <div className="flex items-center gap-2">
                                 <span className="animate-pulse bg-red-500 h-2 w-2 rounded-full"></span>
@@ -127,7 +136,9 @@ const DoctorDashboard = () => {
                         ) : (
                             appointments.map(apt => {
                                 const patient = patientData[apt.patientId] || {};
-                                const userAccount = userData[apt.patientId] || {};
+                                const userAccount = usersMap[apt.patientId] || {};
+                                const totalApts = appointmentStats[apt.patientId] || 0;
+
                                 return (
                                 <div key={apt._id} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-blue-500 hover:shadow-xl transition-all duration-500">
                                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
@@ -138,13 +149,16 @@ const DoctorDashboard = () => {
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="bg-blue-50 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-md border border-blue-100 uppercase">{apt.appointmentId}</span>
+                                                    <span className="bg-slate-100 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded-md border border-slate-200 uppercase flex items-center gap-1">
+                                                        <Hash size={10} /> {totalApts} Appointments
+                                                    </span>
                                                 </div>
                                                 <h4 className="text-xl font-bold text-slate-800 tracking-tight lowercase">
                                                     {userAccount.email || apt.patientId}
                                                 </h4>
                                                 {patient.firstName && (
                                                     <p className="text-blue-600 text-xs font-bold -mt-1 mb-1 capitalize">
-                                                        Patient: {patient.firstName}
+                                                        Record Name: {patient.firstName}
                                                     </p>
                                                 )}
                                                 <p className="text-slate-400 flex items-center gap-1.5 text-[10px] font-bold">
@@ -177,7 +191,6 @@ const DoctorDashboard = () => {
                                         </div>
                                     </div>
 
-                                    {/* Patient Clinical Summary Bar */}
                                     <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                                         <div className="flex items-center gap-2">
                                             <Droplets size={16} className="text-red-500" />
@@ -199,10 +212,9 @@ const DoctorDashboard = () => {
                         )}
                     </div>
 
-                    {/* RIGHT SECTION: ANALYTICS & STATS */}
                     <div className="space-y-6">
                         <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-                            <h3 className="font-bold text-slate-800 mb-8 text-xl tracking-tight border-b border-slate-50 pb-4">Daily Report</h3>
+                            <h3 className="font-bold text-slate-800 mb-8 text-xl tracking-tight border-b border-slate-50 pb-4">Clinical Overview</h3>
                             <div className="space-y-6">
                                 <div className="bg-slate-900 p-8 rounded-[2rem] text-center shadow-inner relative overflow-hidden">
                                     <div className="absolute top-0 right-0 p-4 opacity-10 text-white">
@@ -210,7 +222,7 @@ const DoctorDashboard = () => {
                                     </div>
                                     <p className="text-slate-500 text-[10px] uppercase font-black tracking-widest mb-2">Queue Workload</p>
                                     <p className="text-6xl font-black text-white">{appointments.length}</p>
-                                    <p className="text-xs text-blue-400 font-bold mt-4">Assigned Cases</p>
+                                    <p className="text-xs text-blue-400 font-bold mt-4">Assigned Consultations</p>
                                 </div>
                                 
                                 <div className="space-y-3">
@@ -218,19 +230,19 @@ const DoctorDashboard = () => {
                                         onClick={() => navigate('/doctor-settings')}
                                         className="w-full py-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold text-sm hover:border-blue-200 transition"
                                     >
-                                        Edit Profile & Fees
+                                        Clinical Profile & Fees
                                     </button>
                                     <button 
                                         onClick={() => navigate('/availability')}
                                         className="w-full py-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold text-sm hover:border-blue-200 transition"
                                     >
-                                        Update Availability Slots
+                                        Session Availability
                                     </button>
                                     <button 
                                         onClick={() => navigate('/')}
                                         className="w-full py-4 bg-slate-100 text-slate-500 rounded-2xl font-bold text-sm hover:bg-blue-50 hover:text-blue-600 transition"
                                     >
-                                        Patient Portal View
+                                        Switch to Portal View
                                     </button>
                                 </div>
                             </div>
@@ -239,7 +251,7 @@ const DoctorDashboard = () => {
                         <div className="bg-gradient-to-br from-blue-600 to-blue-800 p-8 rounded-[2.5rem] text-white shadow-2xl shadow-blue-200 relative overflow-hidden">
                              <div className="relative z-10">
                                 <h4 className="font-bold text-lg mb-3">Clinical Compliance</h4>
-                                <p className="text-blue-100 text-xs leading-relaxed font-medium">Automated Digital Prescriptions (Member 2 PDF Engine) ensure all medical sessions follow the regional healthcare standard ISO-2026.</p>
+                                <p className="text-blue-100 text-xs leading-relaxed font-medium">Securely generating digital prescriptions and managing patient records under Distributed Healthcare Standards.</p>
                              </div>
                              <div className="absolute -bottom-6 -right-6 opacity-20 transform rotate-12">
                                 <FileText size={100} />

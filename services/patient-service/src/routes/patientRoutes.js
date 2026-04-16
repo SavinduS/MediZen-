@@ -7,7 +7,8 @@ const {
   uploadReport,
   getReports,
   deleteReport,
-  getInternalProfile
+  getInternalProfile,
+  getReportsByPatientId
 } = require("../controllers/patientController");
 
 const router = express.Router();

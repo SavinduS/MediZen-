@@ -101,13 +101,25 @@ function AppContent() {
     if (clerkLoaded) syncBackendUser();
   }, [user, clerkLoaded, getToken, navigate, location.pathname]);
 
-  // Protect Admin routes and handle admin landing on home page
+  // Handle landing page redirections based on role
   useEffect(() => {
     if (!loadingRole && role) {
+      // Admin Redirection
+      if (role === "admin") {
+        if (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/register") {
+          navigate("/admin/dashboard", { replace: true });
+        }
+      } 
+      // Doctor Redirection
+      else if (role === "doctor") {
+        if (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/register") {
+          navigate("/doctor-dashboard", { replace: true });
+        }
+      }
+      
+      // Safety: Prevent non-admins from hitting admin routes
       if (role !== "admin" && location.pathname.startsWith("/admin")) {
         navigate("/", { replace: true });
-      } else if (role === "admin" && (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/register")) {
-        navigate("/admin/dashboard", { replace: true });
       }
     }
   }, [role, loadingRole, location.pathname, navigate]);
