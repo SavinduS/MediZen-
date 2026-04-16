@@ -24,6 +24,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import VideoRoom from "./pages/VideoRoom";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import DoctorSettings from "./pages/DoctorSettings";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
@@ -123,6 +124,47 @@ function AppContent() {
           <div className="flex items-center gap-6">
             <nav className="space-x-8 hidden md:flex font-medium items-center">
               <SignedIn>
+                {/* Show Patient links if role is 'patient' OR if we are still loading (to prevent flicker) */}
+                {(role === "patient" || loadingRole) && (
+                  <>
+                    <Link
+                      to="/my-appointments"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      My Appointments
+                    </Link>
+                    <Link
+                      to="/reports"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Medical Reports
+                    </Link>
+                    <Link
+                      to="/profile"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Profile
+                    </Link>
+                  </>
+                )}
+
+                {role === "doctor" && (
+                  <>
+                    <Link
+                      to="/doctor-dashboard"
+                      className="hover:text-blue-400 transition"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      to="/doctor-settings"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Profile
+                    </Link>
+                  </>
+                )}
+                
                 {role === "admin" ? (
                   <Link
                     to="/admin/dashboard"
@@ -265,6 +307,39 @@ function AppContent() {
                 </ProtectedRoute>
               </SignedIn>
             }
+          />
+
+           <Route
+              path="/issue-prescription"
+              element={
+                <SignedIn>
+                  <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                    <PrescriptionForm />
+                  </ProtectedRoute>
+                </SignedIn>
+              }
+            />
+
+            <Route
+              path="/doctor-settings"
+              element={
+                <SignedIn>
+                  <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                    <DoctorSettings />
+                  </ProtectedRoute>
+                </SignedIn>
+              }
+            />
+
+            {/* Video Consultation Room (Shared - Accessible by both signed-in Doctor/Patient) */}
+            <Route
+              path="/video"
+              element={
+                <SignedIn>
+                  <VideoRoom />
+                </SignedIn>
+              }
+            />
           >
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminOverview />} />
