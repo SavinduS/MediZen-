@@ -6,14 +6,16 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from "@clerk/clerk-react"; // Import Clerk hook to get logged-in user
-import { ClipboardList, Clock, FileText, Video, User, Activity } from 'lucide-react';
+import { ClipboardList, Clock, FileText, Video, User, Activity, Settings } from 'lucide-react';
+import { fetchDoctorProfileByUserId } from '../services/api';
+import axios from 'axios';
 
 const DoctorDashboard = () => {
     const { user } = useUser(); // Access Clerk user object
     const [appointments, setAppointments] = useState([]);
+    const [doctorInfo, setDoctorInfo] = useState(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
@@ -23,22 +25,25 @@ const DoctorDashboard = () => {
          */
         const fetchDoctorQueue = async () => {
             try {
-                // Requesting all appointments from the shared microservice
+                // 1. First, get the logged-in doctor's profile to find their internal doctorId
+                const profileRes = await fetchDoctorProfileByUserId(user.id);
+                const currentDoctor = profileRes.data;
+                setDoctorInfo(currentDoctor);
+
+                // 2. Requesting all appointments from the shared microservice
                 const response = await axios.get('http://localhost:5004/api/appointments');
                 
                 /**
-                 * Logic: In a real system, we match the Clerk User ID or Email with the Doctor Database.
-                 * For now, we filter to show appointments that belong to this session.
+                 * Logic: Filter appointments to show ONLY those matching this doctor's ID
                  */
                 const myQueue = response.data.filter(apt => 
-                    // Showing a broad range for testing, or matching by user ID/email if saved in DB
-                    apt.doctorId === "DOC-01" || apt.doctorId === "DOC-99" || apt.doctorId === "DOC-88"
+                    apt.doctorId === currentDoctor.doctorId || apt.doctorId === currentDoctor._id.toString()
                 );
                 
                 setAppointments(myQueue);
                 setLoading(false);
             } catch (error) {
-                console.error("Failed to fetch doctor queue:", error);
+                console.error("Failed to fetch doctor data:", error);
                 setLoading(false);
             }
         };
@@ -150,6 +155,12 @@ const DoctorDashboard = () => {
                                 </div>
                                 
                                 <div className="space-y-3">
+                                    <button 
+                                        onClick={() => navigate('/doctor-settings')}
+                                        className="w-full py-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold text-sm hover:border-blue-200 transition"
+                                    >
+                                        Edit Profile & Fees
+                                    </button>
                                     <button className="w-full py-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold text-sm hover:border-blue-200 transition">
                                         Update Availability Slots
                                     </button>

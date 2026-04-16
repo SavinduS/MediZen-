@@ -22,6 +22,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import VideoRoom from "./pages/VideoRoom";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import DoctorSettings from "./pages/DoctorSettings";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
@@ -116,12 +117,20 @@ function AppContent() {
                 )}
 
                 {role === "doctor" && (
-                  <Link
-                    to="/doctor-dashboard"
-                    className="hover:text-blue-400 transition"
-                  >
-                    Dashboard
-                  </Link>
+                  <>
+                    <Link
+                      to="/doctor-dashboard"
+                      className="hover:text-blue-400 transition"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      to="/doctor-settings"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Profile
+                    </Link>
+                  </>
                 )}
                 {role === "admin" && (
                   <Link to="/admin-panel" className="text-red-400 transition">
@@ -221,6 +230,17 @@ function AppContent() {
                 <SignedIn>
                   <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
                     <PrescriptionForm />
+                  </ProtectedRoute>
+                </SignedIn>
+              }
+            />
+
+            <Route
+              path="/doctor-settings"
+              element={
+                <SignedIn>
+                  <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                    <DoctorSettings />
                   </ProtectedRoute>
                 </SignedIn>
               }

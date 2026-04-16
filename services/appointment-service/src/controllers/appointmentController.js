@@ -74,6 +74,117 @@ exports.updateAppointmentStatus = async (req, res) => {
     }
 };
 
+const axios = require('axios');
+
+// @desc    Cancel an Appointment
+// @route   DELETE /api/appointments/:id
+exports.cancelAppointment = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // 1. Find and update the appointment status
+        const appointment = await Appointment.findByIdAndUpdate(
+            id,
+            { status: 'CANCELLED' },
+            { new: true }
+        );
+
+        if (!appointment) {
+            return res.status(404).json({ message: 'Appointment not found' });
+        }
+
+        // 2. Publish cancellation event to RabbitMQ
+        const eventData = {
+            type: 'APPOINTMENT_CANCELLED',
+            payload: {
+                appointmentId: appointment.appointmentId,
+                patientId: appointment.patientId,
+                doctorId: appointment.doctorId,
+                slotTime: appointment.slotTime
+            }
+        };
+        publishNotification(eventData);
+
+        res.status(200).json({
+            message: 'Appointment cancelled successfully',
+            data: appointment
+        });
+    } catch (error) {
+        console.error('❌ Cancellation Error:', error.message);
+        res.status(500).json({ message: 'Failed to cancel appointment' });
+    }
+};
+
+// @desc    Get FREE time slots for a doctor on a specific date
+// @route   GET /api/doctors/:id/slots?date=YYYY-MM-DD
+exports.getAvailableSlots = async (req, res) => {
+    try {
+        const doctorId = req.params.id;
+        const { date } = req.query; // Format: YYYY-MM-DD
+
+        if (!date) {
+            return res.status(400).json({ message: 'Date query parameter is required' });
+        }
+
+        // 1. Get Doctor's Weekly Availability from Doctor Service
+        // Note: Assuming Doctor Service is running on localhost:5003
+        const doctorServiceUrl = `http://localhost:5003/api/doctors/${doctorId}/availability`;
+        const response = await axios.get(doctorServiceUrl);
+        const weeklyAvailability = response.data;
+
+        // 2. Determine the day of the week for the requested date
+        const requestedDate = new Date(date);
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = days[requestedDate.getDay()];
+
+        // 3. Filter availability for that specific day
+        const daySlots = weeklyAvailability.filter(slot => slot.dayOfWeek === dayName && slot.isAvailable);
+
+        if (daySlots.length === 0) {
+            return res.status(200).json([]); // No slots defined for this day
+        }
+
+        // 4. Fetch existing appointments for this doctor on this date
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const existingAppointments = await Appointment.find({
+            doctorId,
+            slotTime: { $gte: startOfDay, $lte: endOfDay },
+            status: { $ne: 'CANCELLED' }
+        });
+
+        // 5. Generate hourly slots (or whatever interval is preferred) and filter out booked ones
+        // For simplicity, we assume the availability defines the range, and we return available hours
+        let freeSlots = [];
+        
+        daySlots.forEach(avail => {
+            let current = new Date(`${date}T${avail.startTime}:00`);
+            const end = new Date(`${date}T${avail.endTime}:00`);
+
+            while (current < end) {
+                const isBooked = existingAppointments.some(app => 
+                    new Date(app.slotTime).getTime() === current.getTime()
+                );
+
+                if (!isBooked) {
+                    freeSlots.push(new Date(current));
+                }
+                
+                // Advance by 1 hour (Default consultation duration)
+                current.setHours(current.getHours() + 1);
+            }
+        });
+
+        res.status(200).json(freeSlots);
+    } catch (error) {
+        console.error('❌ Slot Calculation Error:', error.message);
+        res.status(500).json({ message: 'Error calculating free slots' });
+    }
+};
+
 /**
  * @desc    Get all appointments for a specific patient (History)
  * @route   GET /api/appointments/patient/:patientId

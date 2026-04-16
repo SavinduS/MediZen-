@@ -109,6 +109,109 @@ exports.getDoctorAvailability = async (req, res) => {
     }
 };
 
+// @desc    Get doctor profile by Clerk User ID
+// @route   GET /api/doctors/user/:userId
+exports.getDoctorByUserId = async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const doctor = await Doctor.findOne({ userId });
+        
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor profile not found for this user' });
+        }
+
+        const availability = await Availability.find({ doctorId: doctor._id });
+
+        res.status(200).json({
+            ...doctor.toObject(),
+            availability: availability || []
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching doctor profile' });
+    }
+};
+
+// @desc    Get detailed profile for a specific doctor (includes availability)
+// @route   GET /api/doctors/:id
+// @access  Public
+exports.getDoctorById = async (req, res) => {
+    try {
+        const doctorId = req.params.id; // Internal MongoDB ID of the doctor
+        
+        // Find the doctor by MongoDB ID
+        const doctor = await Doctor.findById(doctorId);
+        if (!doctor) {
+            return res.status(404).json({ message: 'Doctor profile not found' });
+        }
+
+        // Fetch the doctor's weekly availability
+        const availability = await Availability.find({ doctorId });
+
+        res.status(200).json({
+            ...doctor.toObject(),
+            availability: availability || []
+        });
+    } catch (error) {
+        console.error('Error fetching doctor profile:', error.message);
+        res.status(500).json({ message: 'Server error while fetching doctor profile' });
+    }
+};
+
+// @desc    Update Doctor Profile Information
+// @route   PUT /api/doctors/:id
+// @access  Private (Doctor/Admin only)
+exports.updateDoctorProfile = async (req, res) => {
+    try {
+        const doctorId = req.params.id;
+        const { specialization, fee, bio, verified } = req.body;
+
+        // Find and update the doctor profile
+        const updatedDoctor = await Doctor.findByIdAndUpdate(
+            doctorId,
+            { specialization, fee, bio, verified },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedDoctor) {
+            return res.status(404).json({ message: 'Doctor profile not found' });
+        }
+
+        res.status(200).json({
+            message: 'Profile updated successfully',
+            data: updatedDoctor
+        });
+    } catch (error) {
+        console.error('Error updating doctor profile:', error.message);
+        res.status(400).json({ message: 'Error updating profile: ' + error.message });
+    }
+};
+
+// @desc    Delete Doctor Profile
+// @route   DELETE /api/doctors/:id
+// @access  Private (Doctor/Admin only)
+exports.deleteDoctorProfile = async (req, res) => {
+    try {
+        const doctorId = req.params.id;
+
+        // 1. Delete doctor's availability slots first
+        await Availability.deleteMany({ doctorId });
+
+        // 2. Delete the doctor profile
+        const deletedDoctor = await Doctor.findByIdAndDelete(doctorId);
+
+        if (!deletedDoctor) {
+            return res.status(404).json({ message: 'Doctor profile not found' });
+        }
+
+        res.status(200).json({
+            message: 'Doctor profile and availability deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting doctor profile:', error.message);
+        res.status(500).json({ message: 'Server error while deleting profile' });
+    }
+};
+
 // @desc    Get all verified doctors (for patient search)
 // @route   GET /api/doctors
 // @access  Public

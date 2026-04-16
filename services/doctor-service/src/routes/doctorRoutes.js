@@ -9,6 +9,10 @@ const doctorController = require('../controllers/doctorController');
 // --- DOCTOR PROFILE ROUTES ---
 router.post('/', doctorController.createDoctorProfile); // Create Profile
 router.get('/', doctorController.getAllDoctors);       // Search Doctors
+router.get('/user/:userId', doctorController.getDoctorByUserId); // Get Profile by User ID
+router.get('/:id', doctorController.getDoctorById);    // Get Detailed Profile
+router.put('/:id', doctorController.updateDoctorProfile); // Update Profile
+router.delete('/:id', doctorController.deleteDoctorProfile); // Delete Profile
 
 // --- AVAILABILITY ROUTES ---
 
