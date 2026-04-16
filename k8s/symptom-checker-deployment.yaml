@@ -23,5 +23,5 @@ spec:
         - name: GEMINI_API_KEY
           valueFrom:
             secretKeyRef:
-              name: ai-service-secrets # Must match the Secret metadata Name
-              key: GEMINI_API_KEY      # Must match the key inside the Secret
+              name: medizen-secrets
+              key: GEMINI_API_KEY

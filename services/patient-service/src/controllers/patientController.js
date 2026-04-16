@@ -105,10 +105,27 @@ const deleteReport = async (req, res) => {
   }
 };
 
+const getInternalProfile = async (req, res) => {
+  try {
+    const profile = await Patient.findOne({ clerkId: req.params.clerkId });
+    if (!profile) return res.status(404).json({ message: "Patient not found" });
+    
+    res.json({
+      bloodGroup: profile.bloodGroup,
+      allergies: profile.allergies,
+      firstName: profile.firstName
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   uploadReport,
   getReports,
   deleteReport,
+
+  getInternalProfile
 };

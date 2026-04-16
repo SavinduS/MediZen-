@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'symptom-checker'
+    static_configs:
+      - targets: ['symptom-checker:5005']
+
+  # You can add other services here as they get /metrics endpoints
+  # - job_name: 'patient-service'
+  #   static_configs:
+  #     - targets: ['patient-service:5002']

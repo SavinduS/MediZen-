@@ -7,11 +7,13 @@ const {
   uploadReport,
   getReports,
   deleteReport,
+  getInternalProfile
 } = require("../controllers/patientController");
 
 const router = express.Router();
 
 router.get("/profile", ClerkExpressWithAuth(), getProfile);
+router.get("/internal/:clerkId", getInternalProfile);
 router.put("/profile", ClerkExpressWithAuth(), updateProfile);
 router.post(
   "/reports",
