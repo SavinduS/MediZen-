@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: appointment-service
-        image: medizen-appointment-service:latest
+        image: savindus/medizen-appointment-service:latest
         ports:
         - containerPort: 5004
         envFrom:
