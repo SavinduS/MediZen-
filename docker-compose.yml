@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   # Databases & Infrastructure
   mongo-db:
@@ -22,13 +23,10 @@ services:
 
   mongodb-ai:
     image: mongo:latest
-    container_name: mongodb-ai
     ports:
       - "27017:27017"
     volumes:
-      - symptom-data:/data/db
-    networks:
-      - medizen-network
+      - mongo_data:/data/db
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -189,9 +187,8 @@ networks:
     driver: bridge
 
 volumes:
-
   mongo-db-data:
   mongodb-data:
   symptom-data:
   grafana-storage:
-
+  mongo_data:

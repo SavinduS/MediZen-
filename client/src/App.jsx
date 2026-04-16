@@ -27,7 +27,7 @@ import DoctorDashboard from "./pages/DoctorDashboard";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
-import PaymentCheckout from "./pages/PaymentCheckout";
+import PaymentCheckout from "./pages/PaymentCheckout.jsx";
 import PaymentStatus from "./pages/PaymentStatus";
 import ReceiptPage from "./pages/ReceiptPage";
 
@@ -122,58 +122,58 @@ function AppContent() {
 
           <div className="flex items-center gap-6">
             <nav className="space-x-8 hidden md:flex font-medium items-center">
-              <Link to="/" className="hover:text-blue-400 transition text-slate-300">
-                Doctors
-              </Link>
-
               <SignedIn>
-                {(role === "patient" || loadingRole) && (
-                  <>
-                    <Link
-                      to="/my-appointments"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      My Appointments
-                    </Link>
-                    <Link
-                      to="/reports"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      Medical Reports
-                    </Link>
-                    <Link
-                      to="/profile"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      Profile
-                    </Link>
-                  </>
-                )}
-
-                {role === "doctor" && (
-                  <>
-                    <Link
-                      to="/doctor-dashboard"
-                      className="hover:text-blue-400 transition text-slate-300"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      to="/issue-prescription"
-                      className="hover:text-blue-400 transition text-slate-300"
-                    >
-                      Issue Prescription
-                    </Link>
-                  </>
-                )}
-
-                {role === "admin" && (
+                {role === "admin" ? (
                   <Link
                     to="/admin/dashboard"
                     className="hover:text-blue-400 transition text-blue-100"
                   >
                     Admin Panel
                   </Link>
+                ) : (
+                  <>
+                    <Link to="/" className="hover:text-blue-400 transition text-slate-300">
+                      Doctors
+                    </Link>
+                    {role === "patient" && (
+                      <>
+                        <Link
+                          to="/my-appointments"
+                          className="hover:text-blue-400 transition text-blue-100"
+                        >
+                          My Appointments
+                        </Link>
+                        <Link
+                          to="/reports"
+                          className="hover:text-blue-400 transition text-blue-100"
+                        >
+                          Medical Reports
+                        </Link>
+                        <Link
+                          to="/profile"
+                          className="hover:text-blue-400 transition text-blue-100"
+                        >
+                          Profile
+                        </Link>
+                      </>
+                    )}
+                    {role === "doctor" && (
+                      <>
+                        <Link
+                          to="/doctor-dashboard"
+                          className="hover:text-blue-400 transition text-slate-300"
+                        >
+                          Dashboard
+                        </Link>
+                        <Link
+                          to="/issue-prescription"
+                          className="hover:text-blue-400 transition text-slate-300"
+                        >
+                          Issue Prescription
+                        </Link>
+                      </>
+                    )}
+                  </>
                 )}
               </SignedIn>
             </nav>
@@ -250,55 +250,10 @@ function AppContent() {
             }
           />
 
-          <Route
-            path="/payment-checkout/:appointmentId"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="patient"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <PaymentCheckout />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/doctor-dashboard"
-            element={
-              <SignedIn>
-                <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
-                  <DoctorDashboard />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/issue-prescription"
-            element={
-              <SignedIn>
-                <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
-                  <PrescriptionForm />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          {/* Video Consultation Room (Shared - Accessible by both signed-in Doctor/Patient) */}
-          <Route
-            path="/video"
-            element={
-              <SignedIn>
-                <VideoRoom />
-              </SignedIn>
-            }
-          />
-
-          <Route path="/payment-status" element={<SignedIn><PaymentStatus /></SignedIn>} />
-          <Route path="/payment/receipt/:paymentId" element={<SignedIn><ReceiptPage /></SignedIn>} />
+          {/* Payment Routes */}
+          <Route path="/checkout" element={<PaymentCheckout />} />
+          <Route path="/payment-status" element={<PaymentStatus />} />
+          <Route path="/receipt" element={<ReceiptPage />} />
 
           {/* Nested Admin Routes */}
           <Route

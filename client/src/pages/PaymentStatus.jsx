@@ -1,131 +1,106 @@
-import React, { useEffect, useState } from "react";
-import { useLocation, Link, useNavigate } from "react-router-dom";
-import { fetchPaymentById, completePayment } from "../services/api";
-import { CheckCircle, XCircle, Loader2, FileText, ArrowLeft } from "lucide-react";
+import React, { useState } from 'react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import {
+  CheckCircle2,
+  XCircle,
+  ArrowRight,
+  Download,
+  Loader2,
+  RefreshCcw
+} from 'lucide-react';
 
-const PaymentStatus = () => {
+export default function PaymentStatus() {
   const location = useLocation();
   const navigate = useNavigate();
-  const query = new URLSearchParams(location.search);
+  const queryParams = new URLSearchParams(location.search);
 
-  const successParam = query.get("success");
-  const paymentId = query.get("paymentId");
-  
-  const [loading, setLoading] = useState(true);
-  const [payment, setPayment] = useState(null);
-  const [error, setError] = useState("");
+  const status = location.state?.status || queryParams.get('status') || 'failed';
+  const referenceNumber = location.state?.referenceNumber || queryParams.get('reference') || 'REF-2026-00005';
+  const amount = location.state?.amount || '3500';
+  const paymentId = location.state?.paymentId || '';
 
-  useEffect(() => {
-    const verifyAndComplete = async () => {
-      if (!paymentId) {
-        setError("Missing Payment ID");
-        setLoading(false);
-        return;
-      }
+  const [downloading, setDownloading] = useState(false);
+  const isSuccess = status === 'success';
 
-      try {
-        // 1. If we came back with success=true (mock gateway redirect), let's finalize it
-        if (successParam === "true") {
-          await completePayment(paymentId);
-        }
-
-        // 2. Fetch the latest status from backend
-        const response = await fetchPaymentById(paymentId);
-        setPayment(response.data.data);
-      } catch (err) {
-        console.error("Error verifying payment:", err);
-        setError("Could not verify payment status with the server.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    verifyAndComplete();
-  }, [paymentId, successParam]);
-
-  if (loading) {
-    return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
-        <h2 className="text-xl font-semibold text-gray-700">Verifying Payment Status...</h2>
-      </div>
-    );
-  }
-
-  const isSuccess = payment?.status === "completed";
+  const handleDownloadReceipt = async () => {
+    if (!paymentId) return alert('Payment reference not found.');
+    setDownloading(true);
+    try {
+      const response = await axios.get(`http://localhost:5007/api/payments/receipt/${paymentId}`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Receipt-${referenceNumber}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert('Download failed.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
-    <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 px-4">
-      <div className="bg-white shadow-xl rounded-3xl p-8 w-full max-w-lg text-center border border-slate-100">
-        {isSuccess ? (
-          <>
-            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-12 h-12 text-emerald-600" />
-            </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Payment Successful!</h1>
-            <p className="text-slate-500 mb-8 font-medium">
-              Your consultation fee has been processed securely.
-            </p>
+    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6 font-sans overflow-hidden">
+      <div className="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden text-center transform transition-all">
+        
+        {/* Header Section */}
+        <div className="pt-12 pb-8 border-b border-slate-50">
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${isSuccess ? 'bg-emerald-50' : 'bg-red-50'}`}>
+            {isSuccess ? <CheckCircle2 size={48} className="text-emerald-500" /> : <XCircle size={48} className="text-red-500" />}
+          </div>
+          <h1 className="text-3xl font-black text-[#1e293b] uppercase tracking-tighter leading-tight">
+            {isSuccess ? 'Payment Successful' : 'Payment Failed'}
+          </h1>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em] mt-3">Digital Payment Receipt</p>
+        </div>
 
-            <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100 text-left space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-500">Transaction ID</span>
-                <span className="text-sm font-mono font-bold text-slate-800">{payment.txnId}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-500">Payment ID</span>
-                <span className="text-sm font-bold text-slate-800">{payment.paymentId}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-slate-500">Amount Paid</span>
-                <span className="text-sm font-bold text-emerald-600">{payment.currency} {payment.amount.toLocaleString()}</span>
-              </div>
+        {/* Details Section */}
+        <div className="p-10 space-y-6">
+          <div className="bg-slate-50 rounded-3xl border border-slate-100 p-8 space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Reference</span>
+              <span className="text-sm font-black text-[#1e293b]">{referenceNumber}</span>
             </div>
+            <div className="h-px bg-slate-200/60"></div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Amount Paid</span>
+              <span className="text-2xl font-black text-[#2563eb]">LKR {Number(amount).toLocaleString()}</span>
+            </div>
+          </div>
 
-            <div className="flex flex-col gap-3">
-              <Link
-                to={`/payment/receipt/${payment.paymentId}`}
-                className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold transition shadow-lg shadow-slate-200"
-              >
-                <FileText className="w-5 h-5" /> View Digital Receipt
-              </Link>
-              <Link
-                to="/my-appointments"
-                className="text-slate-500 hover:text-slate-800 font-semibold py-2 transition"
-              >
-                Return to Appointments
-              </Link>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <XCircle className="w-12 h-12 text-rose-600" />
-            </div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Payment Failed</h1>
-            <p className="text-slate-500 mb-8 font-medium">
-              {error || "We couldn't process your payment. Please try again or contact support."}
-            </p>
+          {/* Action Button */}
+          {isSuccess ? (
+            <button
+              onClick={handleDownloadReceipt}
+              disabled={downloading}
+              className="w-full flex items-center justify-center gap-3 py-4 bg-[#1e293b] text-white text-sm font-black rounded-2xl shadow-xl hover:bg-slate-800 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              {downloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+              <span>DOWNLOAD PDF RECEIPT</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate('/checkout')}
+              className="w-full flex items-center justify-center gap-3 py-4 bg-red-600 text-white text-sm font-black rounded-2xl shadow-xl hover:bg-red-700 transition-all active:scale-[0.98]"
+            >
+              <RefreshCcw size={20} />
+              <span>TRY PAYMENT AGAIN</span>
+            </button>
+          )}
 
-            <div className="flex flex-col gap-3">
-              <button
-                onClick={() => navigate(-1)}
-                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold transition shadow-lg shadow-blue-200"
-              >
-                Try Again
-              </button>
-              <Link
-                to="/"
-                className="text-slate-500 hover:text-slate-800 font-semibold py-2 transition flex items-center justify-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back to Home
-              </Link>
-            </div>
-          </>
-        )}
+          {/* Footer Link */}
+          <div className="pt-4">
+            <Link to="/dashboard" className="inline-flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-[#2563eb] transition-colors group">
+              <span>Return to Dashboard</span>
+              <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+        </div>
+
       </div>
     </div>
   );
-};
-
-export default PaymentStatus;
+}

@@ -10,6 +10,21 @@ const paymentSchema = new mongoose.Schema({
         required: [true, "Payment ID is required"],
         unique: true
     },
+    receiptNumber: {
+        type: String,
+        unique: true,
+        sparse: true // Only generated upon successful completion
+    },
+    referenceNumber: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    transactionDisplayId: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
     appointmentId: {
         type: String,
         required: [true, "Appointment ID is required"]
@@ -23,6 +38,14 @@ const paymentSchema = new mongoose.Schema({
         required: false
     },
     phone: {
+        type: String,
+        required: false
+    },
+    patientName: {
+        type: String,
+        required: false
+    },
+    doctorName: {
         type: String,
         required: false
     },
