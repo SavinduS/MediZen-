@@ -16,7 +16,13 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+<<<<<<< Updated upstream
     "mongoose": "^9.3.3"
+=======
+    "mongoose": "^9.3.3",
+    "joi": "^17.13.3",
+    "prom-client": "^15.1.3"
+>>>>>>> Stashed changes
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

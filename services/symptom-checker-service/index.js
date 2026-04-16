@@ -4,90 +4,45 @@ const mongoose = require('mongoose');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
+<<<<<<< Updated upstream
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+=======
+const Joi = require('joi');
 
-// --- 1. MongoDB Configuration ---
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/symptom_db';
+const axios = require('axios');
+const client = require('prom-client');
 
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('✅ MongoDB Connected (Symptom Service)'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+const app = express();
 
-// Database Schema
-const symptomCheckSchema = new mongoose.Schema({
-    symptomsText: { type: String, required: true },
-    aiResponse: { type: String, required: true },
-    checkedAt: { type: Date, default: Date.now }
+// --- Prometheus Metrics Setup ---
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+// Custom metric for AI requests
+const aiRequestCounter = new client.Counter({
+    name: 'medizen_ai_requests_total',
+    help: 'Total number of AI symptom check requests',
+    labelNames: ['status']
 });
+register.registerMetric(aiRequestCounter);
 
-const SymptomLog = mongoose.model('SymptomLog', symptomCheckSchema);
+const PATIENT_SERVICE_URL = process.env.PATIENT_SERVICE_URL || 'http://localhost:5002';
+>>>>>>> Stashed changes
 
-// --- 2. Google Gemini Setup with Precise Model Mapping ---
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// ... (keep Joi schema and middleware)
 
-/**
- * Resilient helper using the EXACT models confirmed by your diagnostic (check_raw.js).
- */
-async function generateAIResponse(prompt) {
-    /**
-     * We use the exact names from your available list.
-     * Order: Prioritizing 2.5 and 'latest' aliases to bypass the 404s you experienced.
-     */
-    const modelsToTry = [
-        "gemini-2.5-flash", 
-        "gemini-flash-latest", 
-        "gemini-2.0-flash-lite", 
-        "gemini-pro-latest", 
-        "gemini-2.0-flash" 
-    ];
-    let lastError = null;
-
-    for (const modelName of modelsToTry) {
-        try {
-            console.log(`(AI Service) Attempting to use model: ${modelName}...`);
-            
-            const model = genAI.getGenerativeModel(
-                { model: modelName },
-                { apiVersion: "v1beta" }
-            );
-            
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
-            
-            console.log(`✅ AI Success using: ${modelName}`);
-            return text;
-        } catch (error) {
-            lastError = error;
-            const errorMsg = error.message;
-
-            // Handle 429 (Too Many Requests / Quota Exceeded)
-            if (errorMsg.includes("429") || errorMsg.includes("Quota")) {
-                console.warn(`🛑 Quota exceeded for ${modelName}. Trying fallback...`);
-                continue;
-            }
-
-            // Handle 404 (Model Not Found)
-            if (errorMsg.includes("404") || errorMsg.includes("not found")) {
-                console.warn(`⚠️ Model ${modelName} not found or unsupported for this version. Trying fallback...`);
-                continue;
-            }
-
-            // If it's a critical error (403 invalid key), stop immediately
-            throw error;
-        }
-    }
-    throw lastError;
-}
-
-// --- 3. API Endpoints ---
+app.get('/metrics', async (req, res) => {
+    res.setHeader('Content-Type', register.contentType);
+    res.send(await register.metrics());
+});
 
 app.post('/api/symptom-check', async (req, res) => {
     try {
+<<<<<<< Updated upstream
         const { symptoms } = req.body;
 
         if (!symptoms) {
@@ -112,6 +67,15 @@ app.post('/api/symptom-check', async (req, res) => {
         });
         await newLog.save();
 
+=======
+        const { error, value } = symptomSchema.validate(req.body);
+        if (error) {
+            aiRequestCounter.inc({ status: 'validation_error' });
+            return res.status(400).json({ status: "error", message: error.details[0].message });
+        }
+        // ... rest of the code
+        aiRequestCounter.inc({ status: 'success' });
+>>>>>>> Stashed changes
         res.status(200).json({
             status: "success",
             ai_suggestion: aiText,
@@ -119,6 +83,10 @@ app.post('/api/symptom-check', async (req, res) => {
         });
 
     } catch (error) {
+        aiRequestCounter.inc({ status: 'error' });
+        // ... rest of the catch block
+    }
+});
         console.error("Critical AI Service Error:", error.message);
         
         // Handle Quota failures at the top level
