@@ -30,8 +30,24 @@ jobs:
         with:
           context: ./services/symptom-checker-service
           push: true
-          tags: savindus/medizen-ai-service:latest
+          tags: savindus/medizen-ai-service:${{ github.sha }}, savindus/medizen-ai-service:latest
 
-      # Step 4: Output success message
+      # Step 4: Deploy to Kubernetes Cluster
+      - name: Deploy to K8s
+        uses: azure/k8s-deploy@v4
+        with:
+          action: deploy
+          manifests: |
+            k8s/symptom-checker-deployment.yaml
+            k8s/symptom-checker-service.yaml
+            k8s/secrets.yaml
+            k8s/config-map.yaml
+          images: |
+            savindus/medizen-ai-service:${{ github.sha }}
+          kubectl-version: 'latest'
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+
+      # Step 5: Output success message
       - name: Completion Log
-        run: echo "Deployment to Docker Hub successful for medizen-ai-service."
+        run: echo "Deployment to Docker Hub and K8s successful for medizen-ai-service."
