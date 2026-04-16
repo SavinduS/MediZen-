@@ -5,6 +5,12 @@ const appointmentController = require('../controllers/appointmentController');
 // POST /api/appointments
 router.post('/', appointmentController.bookAppointment);
 
+// GET /api/appointments/doctor/:id/slots
+router.get('/doctor/:id/slots', appointmentController.getAvailableSlots);
+
+// DELETE /api/appointments/:id
+router.delete('/:id', appointmentController.cancelAppointment);
+
 // GET /api/appointments/patient/:patientId
 router.get('/patient/:patientId', appointmentController.getPatientAppointments);
 
