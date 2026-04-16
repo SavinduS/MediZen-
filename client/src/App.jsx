@@ -26,6 +26,7 @@ import VideoRoom from "./pages/VideoRoom";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import DoctorSettings from "./pages/DoctorSettings";
 import AvailabilityManager from "./pages/AvailabilityManager";
+import PatientReportViewer from "./pages/PatientReportViewer";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
@@ -102,13 +103,25 @@ function AppContent() {
     if (clerkLoaded) syncBackendUser();
   }, [user, clerkLoaded, getToken, navigate, location.pathname]);
 
-  // Protect Admin routes and handle admin landing on home page
+  // Handle landing page redirections based on role
   useEffect(() => {
     if (!loadingRole && role) {
+      // Admin Redirection
+      if (role === "admin") {
+        if (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/register") {
+          navigate("/admin/dashboard", { replace: true });
+        }
+      } 
+      // Doctor Redirection
+      else if (role === "doctor") {
+        if (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/register") {
+          navigate("/doctor-dashboard", { replace: true });
+        }
+      }
+      
+      // Safety: Prevent non-admins from hitting admin routes
       if (role !== "admin" && location.pathname.startsWith("/admin")) {
         navigate("/", { replace: true });
-      } else if (role === "admin" && (location.pathname === "/" || location.pathname === "/login" || location.pathname === "/register")) {
-        navigate("/admin/dashboard", { replace: true });
       }
     }
   }, [role, loadingRole, location.pathname, navigate]);
@@ -127,97 +140,37 @@ function AppContent() {
           <div className="flex items-center gap-6">
             <nav className="space-x-8 hidden md:flex font-medium items-center">
               <SignedIn>
-                {/* Show Patient links if role is 'patient' OR if we are still loading (to prevent flicker) */}
-                {(role === "patient" || loadingRole) && (
+                {role === "admin" && (
+                  <Link to="/admin/dashboard" className="hover:text-blue-400 transition text-blue-100">
+                    Admin Panel
+                  </Link>
+                )}
+
+                {role === "doctor" && (
                   <>
-                    <Link
-                      to="/my-appointments"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      My Appointments
+                    <Link to="/doctor-dashboard" className="hover:text-blue-400 transition text-slate-300">
+                      Dashboard
                     </Link>
-                    <Link
-                      to="/reports"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      Medical Reports
-                    </Link>
-                    <Link
-                      to="/profile"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
+                    <Link to="/doctor-settings" className="hover:text-blue-400 transition text-blue-100">
                       Profile
                     </Link>
                   </>
                 )}
 
-                {role === "doctor" && (
-                  <>
-                    <Link
-                      to="/doctor-dashboard"
-                      className="hover:text-blue-400 transition"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      to="/doctor-settings"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      Profile
-                    </Link>
-                  </>
-                )}
-                
-                {role === "admin" ? (
-                  <Link
-                    to="/admin/dashboard"
-                    className="hover:text-blue-400 transition text-blue-100"
-                  >
-                    Admin Panel
-                  </Link>
-                ) : (
+                {role === "patient" && (
                   <>
                     <Link to="/" className="hover:text-blue-400 transition text-slate-300">
                       Doctors
                     </Link>
-                    {role === "patient" && (
-                      <>
-                        <Link
-                          to="/my-appointments"
-                          className="hover:text-blue-400 transition text-blue-100"
-                        >
-                          My Appointments
-                        </Link>
-                        <Link
-                          to="/reports"
-                          className="hover:text-blue-400 transition text-blue-100"
-                        >
-                          Medical Reports
-                        </Link>
-                        <Link
-                          to="/profile"
-                          className="hover:text-blue-400 transition text-blue-100"
-                        >
-                          Profile
-                        </Link>
-                      </>
-                    )}
-                    {role === "doctor" && (
-                      <>
-                        <Link
-                          to="/doctor-dashboard"
-                          className="hover:text-blue-400 transition text-slate-300"
-                        >
-                          Dashboard
-                        </Link>
-                        <Link
-                          to="/issue-prescription"
-                          className="hover:text-blue-400 transition text-slate-300"
-                        >
-                          Issue Prescription
-                        </Link>
-                      </>
-                    )}
+                    <Link to="/my-appointments" className="hover:text-blue-400 transition text-blue-100">
+                      My Appointments
+                    </Link>
+                    <Link to="/reports" className="hover:text-blue-400 transition text-blue-100">
+                      Medical Reports
+                    </Link>
+                    <Link to="/profile" className="hover:text-blue-400 transition text-blue-100">
+                      Profile
+                    </Link>
                   </>
                 )}
               </SignedIn>
@@ -331,6 +284,17 @@ function AppContent() {
             />
 
             <Route
+              path="/doctor-dashboard"
+              element={
+                <SignedIn>
+                  <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                    <DoctorDashboard />
+                  </ProtectedRoute>
+                </SignedIn>
+              }
+            />
+
+            <Route
               path="/doctor-settings"
               element={
                 <SignedIn>
@@ -347,6 +311,17 @@ function AppContent() {
                 <SignedIn>
                   <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
                     <AvailabilityManager />
+                  </ProtectedRoute>
+                </SignedIn>
+              }
+            />
+
+            <Route
+              path="/patient-reports/:patientId"
+              element={
+                <SignedIn>
+                  <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                    <PatientReportViewer />
                   </ProtectedRoute>
                 </SignedIn>
               }

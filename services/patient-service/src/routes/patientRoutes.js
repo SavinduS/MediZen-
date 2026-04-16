@@ -7,7 +7,8 @@ const {
   uploadReport,
   getReports,
   deleteReport,
-  getInternalProfile
+  getInternalProfile,
+  getReportsByPatientId
 } = require("../controllers/patientController");
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.post(
   uploadReport,
 );
 router.get("/reports", ClerkExpressWithAuth(), getReports);
+router.get("/reports/:patientId", getReportsByPatientId);
 router.delete("/reports/:id", ClerkExpressWithAuth(), deleteReport);
 
 module.exports = router;

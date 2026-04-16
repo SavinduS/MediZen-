@@ -5,10 +5,10 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { fetchDoctors, bookAppointment } from '../services/api';
+import { fetchDoctors, bookAppointment, fetchAvailableSlots } from '../services/api';
 import { useUser } from "@clerk/clerk-react"; // Hook to get logged-in user details
 import { useNavigate } from 'react-router-dom'; // For navigation to login/appointments
-import { Stethoscope, Clock, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Stethoscope, Clock, ShieldCheck, AlertCircle, Calendar } from 'lucide-react';
 
 const DoctorListing = () => {
   const { user, isSignedIn } = useUser(); // Get auth state from Clerk
@@ -19,13 +19,22 @@ const DoctorListing = () => {
   
   // States for Booking Modal
   const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [bookingData, setBookingData] = useState({ slotTime: '' });
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadDoctors();
   }, []);
+
+  useEffect(() => {
+    if (selectedDoctor && selectedDate) {
+      loadSlots();
+    }
+  }, [selectedDoctor, selectedDate]);
 
   const loadDoctors = async () => {
     try {
@@ -38,6 +47,21 @@ const DoctorListing = () => {
     }
   };
 
+  const loadSlots = async () => {
+    setLoadingSlots(true);
+    setAvailableSlots([]);
+    setSelectedSlot('');
+    try {
+      // Use the internal _id for slot calculation
+      const response = await fetchAvailableSlots(selectedDoctor._id, selectedDate);
+      setAvailableSlots(response.data);
+    } catch (error) {
+      console.error("Error loading slots:", error);
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
+
   /**
    * Handle the Appointment Booking Process
    * Ensures the user is logged in before allowing a reservation.
@@ -45,7 +69,11 @@ const DoctorListing = () => {
   const handleBooking = async (e) => {
     e.preventDefault();
     
-    // 1. Double check if user is signed in
+    if (!selectedSlot) {
+      setMessage('❌ Please select a time slot.');
+      return;
+    }
+
     if (!isSignedIn) {
       navigate('/login');
       return;
@@ -55,23 +83,21 @@ const DoctorListing = () => {
     setMessage('');
 
     try {
-      // 2. Build the payload using REAL user data from Clerk
       const payload = {
-        patientId: user.primaryEmailAddress.emailAddress, // Use email as unique identifier
-        doctorId: selectedDoctor.doctorId,
-        slotTime: bookingData.slotTime
+        patientId: user.id, // Use Clerk User ID (consistent with dashboard fetch)
+        doctorId: selectedDoctor._id, // Use Internal MongoDB ID
+        slotTime: selectedSlot
       };
 
       const response = await bookAppointment(payload);
       
-      // Redirect to checkout with full appointment details
       navigate('/checkout', {
         state: {
           appointmentId: response.data.data.appointmentId,
-          doctorId: selectedDoctor.doctorId,
+          doctorId: selectedDoctor._id,
           doctorName: selectedDoctor.name,
           doctorSpecialty: selectedDoctor.specialization,
-          appointmentDateTime: bookingData.slotTime,
+          appointmentDateTime: selectedSlot,
           amount: selectedDoctor.fee
         }
       });
@@ -145,29 +171,61 @@ const DoctorListing = () => {
       {/* --- BOOKING MODAL (Protected by Clerk session) --- */}
       {selectedDoctor && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex justify-center items-center z-[100] p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden transform animate-in slide-in-from-bottom-8">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden transform animate-in slide-in-from-bottom-8">
             <div className="bg-slate-900 p-8 text-white relative">
                 <div className="absolute top-0 right-0 p-8 opacity-10">
-                    <Clock size={80} />
+                    <Calendar size={80} />
                 </div>
               <h3 className="text-2xl font-bold">Schedule Session</h3>
               <p className="text-blue-400 text-sm font-medium mt-1">With Dr. {selectedDoctor.name}</p>
             </div>
             
             <form onSubmit={handleBooking} className="p-8 space-y-6">
+              {/* Date Selection */}
               <div>
                 <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">
-                    <Clock size={16} className="text-blue-600" /> Choose Your Time Slot
+                    <Calendar size={16} className="text-blue-600" /> Select Date
                 </label>
                 <input 
-                  type="datetime-local" 
+                  type="date" 
+                  min={new Date().toISOString().split('T')[0]}
+                  value={selectedDate}
                   required
                   className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-blue-500 focus:bg-white transition-all outline-none font-medium"
-                  onChange={(e) => setBookingData({...bookingData, slotTime: e.target.value})}
+                  onChange={(e) => setSelectedDate(e.target.value)}
                 />
-                <p className="text-[10px] text-slate-400 mt-3 flex items-center gap-1">
-                    <ShieldCheck size={12}/> Secure end-to-end encrypted booking
-                </p>
+              </div>
+
+              {/* Slot Selection */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-3 uppercase tracking-wide">
+                    <Clock size={16} className="text-blue-600" /> Available Slots
+                </label>
+                
+                {loadingSlots ? (
+                  <div className="p-4 text-center text-slate-400 font-medium">Loading available times...</div>
+                ) : availableSlots.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-3">
+                    {availableSlots.map((slot) => (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`p-3 text-xs font-bold rounded-xl transition-all border-2 ${
+                          selectedSlot === slot 
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-100 scale-105' 
+                            : 'bg-white text-slate-600 border-slate-100 hover:border-blue-200'
+                        }`}
+                      >
+                        {new Date(slot).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-center gap-2 text-amber-700 text-xs font-bold">
+                    <AlertCircle size={16} /> No available slots for this date.
+                  </div>
+                )}
               </div>
 
               {message && (
@@ -184,14 +242,14 @@ const DoctorListing = () => {
                   onClick={() => { setSelectedDoctor(null); setMessage(''); }}
                   className="flex-1 px-4 py-4 border-2 border-slate-100 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition active:scale-95"
                 >
-                  Close
+                  Cancel
                 </button>
                 <button 
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !selectedSlot}
                   className="flex-1 px-4 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition shadow-xl shadow-blue-200 disabled:bg-slate-300 active:scale-95"
                 >
-                  {isSubmitting ? 'Processing...' : 'Confirm'}
+                  {isSubmitting ? 'Confirming...' : 'Book Now'}
                 </button>
               </div>
             </form>
