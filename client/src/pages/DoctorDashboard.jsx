@@ -161,7 +161,10 @@ const DoctorDashboard = () => {
                                     >
                                         Edit Profile & Fees
                                     </button>
-                                    <button className="w-full py-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold text-sm hover:border-blue-200 transition">
+                                    <button 
+                                        onClick={() => navigate('/availability')}
+                                        className="w-full py-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold text-sm hover:border-blue-200 transition"
+                                    >
                                         Update Availability Slots
                                     </button>
                                     <button 

@@ -104,7 +104,7 @@ services:
     ports:
       - "5006:5006"
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/telemedicine_db
+      - MONGO_URI=mongodb://mongodb:27017/session_db
     depends_on:
       - mongodb
     networks:
