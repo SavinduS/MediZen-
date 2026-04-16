@@ -115,4 +115,6 @@ export const fetchNotificationPrefs = (userId, token) =>
 
 export const updateNotificationPrefs = (data, token) => 
   adminAPI.put('/notifications/prefs', data, { headers: { Authorization: `Bearer ${token}` } });
- => symptomAPI.post('/', data);
+
+// --- SYMPTOM CHECKER CALLS (PORT 5005) ---
+export const checkSymptoms = (data) => symptomAPI.post('/', data);
