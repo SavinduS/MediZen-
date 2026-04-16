@@ -1,0 +1,55 @@
+name: Telemedicine Service CI
+
+on:
+  push:
+    branches: ["main", "Doctor-service", "clinical-consultation-suite"]
+    paths:
+      - "services/telemedicine-service/**"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "services/telemedicine-service/**"
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: "services/telemedicine-service/package-lock.json"
+
+      - name: Install dependencies
+        run: |
+          cd services/telemedicine-service
+          npm install
+
+      - name: Source Code Verification
+        run: |
+          cd services/telemedicine-service
+          node --check src/index.js
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push Telemedicine Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/telemedicine-service
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-telemedicine-service:latest
+            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-telemedicine-service:${{ github.sha }}

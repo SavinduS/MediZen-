@@ -25,6 +25,7 @@ import SignupPage from "./pages/SignupPage";
 import VideoRoom from "./pages/VideoRoom";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import DoctorSettings from "./pages/DoctorSettings";
+import AvailabilityManager from "./pages/AvailabilityManager";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
@@ -333,6 +334,17 @@ function AppContent() {
                 <SignedIn>
                   <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
                     <DoctorSettings />
+                  </ProtectedRoute>
+                </SignedIn>
+              }
+            />
+
+            <Route
+              path="/availability"
+              element={
+                <SignedIn>
+                  <ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}>
+                    <AvailabilityManager />
                   </ProtectedRoute>
                 </SignedIn>
               }

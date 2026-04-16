@@ -41,6 +41,8 @@ export const fetchDoctorProfile = (id) => doctorAPI.get(`/${id}`);
 export const fetchDoctorProfileByUserId = (userId) => doctorAPI.get(`/user/${userId}`);
 export const updateDoctorProfile = (id, data) => doctorAPI.put(`/${id}`, data);
 export const deleteDoctorProfile = (id) => doctorAPI.delete(`/${id}`);
+export const getDoctorAvailability = (id) => doctorAPI.get(`/${id}/availability`);
+export const updateDoctorAvailability = (id, slots) => doctorAPI.put(`/${id}/availability`, { slots });
 
 const doctorSlotsAPI = axios.create({ baseURL: 'http://localhost:5004/api/doctors' });
 
