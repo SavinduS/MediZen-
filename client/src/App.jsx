@@ -30,8 +30,6 @@ import PatientReportViewer from "./pages/PatientReportViewer";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
-import SymptomChecker from "./pages/SymptomChecker";
-import PaymentCheckout from "./pages/PaymentCheckout";
 import PaymentCheckout from "./pages/PaymentCheckout.jsx";
 import PaymentStatus from "./pages/PaymentStatus";
 import ReceiptPage from "./pages/ReceiptPage";
@@ -340,23 +338,6 @@ function AppContent() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </main>
-
-      <footer className="py-8 bg-white border-t border-slate-200 text-center text-slate-500 text-sm">
-        &copy; 2026 MediZen Healthcare - Distributed Systems Assignment
-      </footer>
-    </div>
-  );
-}
-
-export default function App() {
-  return (
-    <Router>
-      <AppContent />
-    </Router>
-  );
-}
-       </Routes>
       </main>
 
       <footer className="py-8 bg-white border-t border-slate-200 text-center text-slate-500 text-sm">
