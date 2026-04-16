@@ -94,8 +94,10 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
+      - PATIENT_SERVICE_URL=http://patient-service:5002
     depends_on:
       - mongodb-ai
+      - patient-service
     networks:
       - medizen-network
 
@@ -159,11 +161,37 @@ services:
     networks:
       - medizen-network
 
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - medizen-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - medizen-network
+
 networks:
   medizen-network:
     driver: bridge
 
 volumes:
+
   mongo-db-data:
   mongodb-data:
   symptom-data:
+  grafana-storage:
+
