@@ -23,6 +23,8 @@ export default function AdminDoctors() {
   const [formData, setFormData] = useState({
     _id: null,
     name: "",
+    email: "",
+    password: "",
     specialization: "General",
     qualifications: "",
     fee: "",
@@ -58,7 +60,7 @@ export default function AdminDoctors() {
 
   const handleOpenAdd = () => {
     setIsEditing(false);
-    setFormData({ _id: null, name: "", specialization: "General", qualifications: "", fee: "", bio: "" });
+    setFormData({ _id: null, name: "", email: "", password: "", specialization: "General", qualifications: "", fee: "", bio: "" });
     setShowModal(true);
   };
 
@@ -67,6 +69,8 @@ export default function AdminDoctors() {
     setFormData({
       _id: doctor._id,
       name: doctor.name,
+      email: doctor.email || "",
+      password: "",
       specialization: doctor.specialization || "General",
       qualifications: Array.isArray(doctor.qualifications) ? doctor.qualifications.join(", ") : doctor.qualifications,
       fee: doctor.fee,
@@ -91,10 +95,16 @@ export default function AdminDoctors() {
     setSubmitting(true);
     try {
       if (isEditing) {
-        await axios.put(`http://localhost:5003/api/doctors/admin/${formData._id}`, formData);
+        await axios.put(`http://localhost:5003/api/doctors/admin/${formData._id}`,
+          formData
+        );
         toast.success("Doctor updated successfully");
       } else {
-        await axios.post("http://localhost:5003/api/doctors/admin/add", formData);
+        // Only send email and password if present
+        const payload = { ...formData };
+        if (!payload.email) delete payload.email;
+        if (!payload.password) delete payload.password;
+        await axios.post("http://localhost:5003/api/doctors/admin/add", payload);
         toast.success("Doctor added successfully");
       }
       setShowModal(false);
@@ -243,10 +253,31 @@ export default function AdminDoctors() {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Doctor Name</label>
                 <input 
                   type="text" required value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
                   placeholder="e.g. Dr. Sanath Gunawardena"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Email</label>
+                  <input
+                    type="email" value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    placeholder="doctor@email.com"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block ml-1">Password</label>
+                  <input
+                    type="password" value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    placeholder="Password"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

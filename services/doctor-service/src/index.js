@@ -3,13 +3,12 @@
  * Port: 5003 (As per the official Port Map)
  * Database: medizen_doctor_db
  */
-
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
 const path = require('path');
 
 // --- ROUTE IMPORTS ---
