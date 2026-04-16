@@ -2,9 +2,13 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const amqp = require('amqplib');
+const cors = require('cors');
 const { handlePaymentSuccess } = require('./services/notificationService');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
+app.use(cors());
+app.use(express.json());
 const PORT = process.env.PORT || 5008;
 
 /**
@@ -95,6 +99,8 @@ startConsumer();
 /**
  * 4. EXPRESS ROUTES
  */
+app.use('/api/notifications', notificationRoutes);
+
 app.get('/health', (req, res) => {
     res.json({ 
         service: 'Notification Service', 

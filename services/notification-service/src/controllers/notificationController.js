@@ -81,8 +81,39 @@ const updatePreferences = async (req, res) => {
   }
 };
 
+// 4. GET /api/notifications/prefs/:userId
+const getPreferencesByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    let prefs = await NotificationPreference.findOne({ userId });
+    
+    // Fallback if no prefs exist yet
+    if (!prefs) {
+      prefs = { userId, emailEnabled: true, smsEnabled: true };
+    }
+
+    res.status(200).json({
+      success: true,
+      data: prefs
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server Error", error: err.message });
+  }
+};
+
+const getAllLogs = async (req, res) => {
+  try {
+    const logs = await NotificationLog.find().sort({ sentAt: -1 });
+    res.status(200).json({ success: true, data: logs });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server Error", error: err.message });
+  }
+};
+
 module.exports = {
   sendManualNotification,
   getHistoryByUserId,
-  updatePreferences
+  updatePreferences,
+  getPreferencesByUserId,
+  getAllLogs
 };

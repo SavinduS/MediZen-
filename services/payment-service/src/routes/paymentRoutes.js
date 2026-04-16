@@ -4,7 +4,9 @@ const {
     createPaymentIntent, 
     completePayment, 
     getReceipt, 
-    getPaymentById 
+    getPaymentById,
+    getAllPayments,
+    generateSummaryReport
 } = require('../controllers/paymentController');
 
 /**
@@ -13,6 +15,12 @@ const {
  * Base URL: /api/payments
  */
 
+// 0. Get All Payments (Admin)
+router.get('/', getAllPayments);
+
+// 0.1 Generate Summary Report (Admin)
+router.get('/reports/all', generateSummaryReport);
+
 // 1. Create Stripe Payment Intent
 router.post('/create-intent', createPaymentIntent);
 
@@ -20,7 +28,7 @@ router.post('/create-intent', createPaymentIntent);
 router.post('/:id/complete', completePayment);
 
 // 3. Get Payment Receipt (PDF)
-router.get('/:id/receipt', getReceipt);
+router.get('/receipt/:id', getReceipt);
 
 // 4. Get Payment Details
 router.get('/:id', getPaymentById);

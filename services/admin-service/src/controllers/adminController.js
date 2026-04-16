@@ -416,7 +416,8 @@ const getStats = async (req, res, next) => {
         totalPatients: 0,
         totalAppointments: 0,
         totalPayments: 0,
-        totalRevenue: 0
+        totalRevenue: 0,
+        recentActivity: []
     };
 
     const promises = [];
@@ -439,6 +440,15 @@ const getStats = async (req, res, next) => {
             stats.totalRevenue = result.length > 0 ? result[0].total : 0;
         }).catch(() => 0));
     }
+
+    // Fetch last 5 system events from AuditLog
+    promises.push(AuditLog.find().sort({ createdAt: -1 }).limit(5).then(logs => {
+        stats.recentActivity = logs.map(l => ({
+            action: l.action.replace(/_/g, ' '),
+            timestamp: l.createdAt,
+            targetId: l.targetId
+        }));
+    }).catch(() => []));
 
     await Promise.all(promises);
     return successResponse(res, stats);

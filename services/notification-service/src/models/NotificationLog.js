@@ -27,7 +27,7 @@ const notificationLogSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "sent", "failed"],
+    enum: ["pending", "accepted", "sent", "delivered", "failed"],
     default: "pending"
   },
   sentAt: {

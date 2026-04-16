@@ -1,285 +1,279 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useAuth } from "@clerk/clerk-react";
-import { fetchAdminPayments } from "../../services/api";
-import {
-  CreditCard,
-  Search,
-  Filter,
-  Download,
-  ArrowUpRight,
-  Loader2,
-  AlertCircle,
-  LayoutGrid,
-  Wallet,
-  CheckCircle2,
-  Clock3,
-  XCircle,
+import axios from "axios";
+import AdminTable from "../../components/AdminTable";
+import { 
+  CreditCard, Wallet, CheckCircle2, Clock3, XCircle, 
+  Download, Calendar, ChevronRight, X, Search, FileText, Loader2
 } from "lucide-react";
+import toast, { Toaster } from 'react-hot-toast';
 
 export default function AdminPayments() {
-  const { getToken } = useAuth();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterStatus, setFilterStatus] = useState("All");
+  const [filterStatus, setFilterStatus] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [reporting, setReporting] = useState(false);
 
-  const fetchPayments = async () => {
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-
-      const token = await getToken();
-      const params = {
-        status: filterStatus !== "All" ? filterStatus : undefined,
-        search: searchTerm || undefined,
-      };
-
-      const response = await fetchAdminPayments(params, token);
-      const data = response.data?.data?.payments || response.data?.payments || [];
-      setPayments(data);
+      const res = await axios.get("http://localhost:5007/api/payments");
+      // Sorting: Latest first (LIFO)
+      const data = res.data.data || [];
+      const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setPayments(sorted);
     } catch (err) {
-      console.error("Admin Payments API Error:", err);
-      setError(err.response?.data?.message || "Failed to fetch transaction records.");
+      setError("Payment service unreachable.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const delayDebounce = setTimeout(() => {
-      fetchPayments();
-    }, 400);
+    fetchData();
+  }, []);
 
-    return () => clearTimeout(delayDebounce);
-  }, [filterStatus, searchTerm]);
+  const filteredPayments = useMemo(() => {
+    return payments.filter(p => {
+      const matchesStatus = filterStatus === "ALL" || p.status?.toUpperCase() === filterStatus;
+      const matchesSearch = searchTerm === "" || 
+        (p.paymentId && p.paymentId.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesStatus && matchesSearch;
+    });
+  }, [payments, filterStatus, searchTerm]);
 
-  const summary = useMemo(() => {
-    const total = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-    const completed = payments.filter((p) => p.status === "completed");
-    const pending = payments.filter((p) => p.status === "pending");
-    const failed = payments.filter((p) => p.status === "failed");
+  const exportToCSV = () => {
+    const headers = ["Reference ID", "Amount (LKR)", "Status", "Timestamp"];
+    const rows = filteredPayments.map(p => [
+      p.paymentId,
+      p.amount,
+      p.status,
+      new Date(p.createdAt).toLocaleString()
+    ]);
 
-    return {
-      totalRevenue: total,
-      successCount: completed.length,
-      pendingCount: pending.length,
-      failedCount: failed.length,
-    };
-  }, [payments]);
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers, ...rows].map(e => e.join(",")).join("\n");
 
-  const summaryCards = [
-    {
-      title: "Total Revenue",
-      value: `LKR ${summary.totalRevenue.toLocaleString()}`,
-      icon: Wallet,
-      iconWrap: "bg-blue-100 text-blue-600",
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `MediZen_Transactions_${new Date().toLocaleDateString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const handleGenerateReport = async () => {
+    setReporting(true);
+    try {
+      const response = await axios.get("http://localhost:5007/api/payments/reports/all", {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `MediZen_Financial_Audit_${new Date().toLocaleDateString()}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Financial Report Generated Successfully");
+    } catch (err) {
+      console.error("Report generation failed", err);
+      toast.error("Failed to generate financial report");
+    } finally {
+      setReporting(false);
+    }
+  };
+
+  const stats = [
+    { title: "Total Revenue", value: `LKR ${payments.reduce((acc, curr) => acc + (curr.status === 'completed' ? curr.amount : 0), 0).toLocaleString()}`, icon: Wallet, bg: "bg-blue-100", color: "text-blue-600" },
+    { title: "Success", value: payments.filter(p => p.status === 'completed').length, icon: CheckCircle2, bg: "bg-emerald-100", color: "text-emerald-600" },
+    { title: "Pending", value: payments.filter(p => p.status === 'pending').length, icon: Clock3, bg: "bg-amber-100", color: "text-amber-700" },
+    { title: "Total Records", value: payments.length, icon: FileText, bg: "bg-slate-100", color: "text-slate-600" },
+  ];
+
+  const columns = [
+    { 
+      header: "Reference ID", 
+      render: (p) => (
+        <span className="font-mono text-[11px] font-bold text-slate-400">
+          {p.paymentId || p.txnId?.slice(0, 10).toUpperCase() || 'TXN-REF'}
+        </span>
+      )
+    },
+    { 
+      header: "Amount (LKR)", 
+      align: "right",
+      render: (p) => <span className="text-sm font-black text-blue-600 tracking-tight">{Number(p.amount).toLocaleString()}</span>
+    },
+    { 
+      header: "Status", 
+      render: (p) => (
+        <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+          p.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+          p.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {p.status}
+        </span>
+      )
+    },
+    { 
+      header: "Timestamp", 
+      render: (p) => (
+        <div className="flex flex-col text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+          <div className="flex items-center gap-1"><Calendar size={12}/> {new Date(p.createdAt).toLocaleDateString()}</div>
+          <div className="text-slate-300 ml-4">{new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+      )
     },
     {
-      title: "Successful",
-      value: summary.successCount,
-      icon: CheckCircle2,
-      iconWrap: "bg-emerald-100 text-emerald-600",
-    },
-    {
-      title: "Pending",
-      value: summary.pendingCount,
-      icon: Clock3,
-      iconWrap: "bg-amber-100 text-amber-600",
-    },
-    {
-      title: "Failed",
-      value: summary.failedCount,
-      icon: XCircle,
-      iconWrap: "bg-red-100 text-red-600",
-    },
+      header: "",
+      align: "right",
+      render: (p) => (
+        <button 
+          onClick={() => setSelectedPayment(p)}
+          className="p-2 rounded-xl bg-slate-50 text-[#2563eb] hover:bg-[#2563eb] hover:text-white transition-all shadow-sm border border-slate-100"
+        >
+          <ChevronRight size={18} />
+        </button>
+      )
+    }
   ];
 
   return (
-    <div className="h-full min-h-0 overflow-hidden">
-      <div className="flex h-full min-h-0 flex-col gap-4 rounded-3xl bg-slate-50 p-4 md:p-5">
-        {/* Header */}
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="flex items-center gap-3 text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">
-              <div className="rounded-2xl bg-blue-100 p-2.5">
-                <CreditCard className="text-blue-600" size={24} />
-              </div>
-              Financial Ledger
-            </h1>
-            <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Transaction Monitoring & Audit Panel
-            </p>
-          </div>
-
-          <button className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-slate-800">
-            <Download size={16} />
-            Export CSV
-          </button>
+    <div className="flex flex-col gap-6 p-8 h-full bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden font-sans relative">
+      <Toaster position="top-right" />
+      
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-black text-[#1e293b] flex items-center gap-3 tracking-tight uppercase">
+            <CreditCard className="text-blue-600" size={32} /> Financial Ledger
+          </h1>
+          <p className="text-slate-400 font-bold mt-1 uppercase text-[10px] tracking-[0.2em]">Transaction Audit & Control</p>
         </div>
-
-        {/* Payment Summary */}
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          {summaryCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <div
-                key={card.title}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                      {card.title}
-                    </p>
-                    <h3 className="mt-2 text-lg md:text-xl font-extrabold text-slate-900 break-words">
-                      {card.value}
-                    </h3>
-                  </div>
-
-                  <div className={`rounded-2xl p-2.5 ${card.iconWrap}`}>
-                    <Icon size={18} />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Search + Filter */}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <div className="relative lg:col-span-2">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder="Search by Patient ID, Payment ID or Transaction ID..."
-              className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="relative">
-            <Filter
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-              size={18}
-            />
-            <select
-              className="h-11 w-full appearance-none rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold text-slate-700 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+        <div className="flex gap-3">
+            <button 
+                onClick={handleGenerateReport}
+                disabled={reporting}
+                className="flex items-center gap-2 px-6 py-3 bg-white border-2 border-slate-900 text-slate-900 text-xs font-black rounded-2xl shadow-sm hover:bg-slate-50 transition-all uppercase tracking-widest disabled:opacity-50"
             >
-              <option value="All">All Transactions</option>
-              <option value="completed">Success Only</option>
-              <option value="pending">Pending Only</option>
-              <option value="failed">Failed Only</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="min-h-0 flex-1 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="h-full overflow-auto">
-            {loading ? (
-              <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 px-6 text-center">
-                <Loader2 className="animate-spin text-blue-600" size={34} />
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">
-                  Querying payment database...
-                </p>
-              </div>
-            ) : error ? (
-              <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 px-6 text-center">
-                <AlertCircle className="text-red-500" size={34} />
-                <p className="max-w-md text-sm font-semibold text-red-500">{error}</p>
-                <button
-                  onClick={fetchPayments}
-                  className="text-xs font-bold uppercase tracking-widest text-blue-600 hover:underline"
-                >
-                  Retry Connection
-                </button>
-              </div>
-            ) : payments.length === 0 ? (
-              <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 px-6 text-center">
-                <LayoutGrid size={42} className="text-slate-200" />
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">
-                  No Transaction Records Found
-                </p>
-              </div>
-            ) : (
-              <table className="min-w-full text-left">
-                <thead className="sticky top-0 z-10 bg-slate-50">
-                  <tr className="border-b border-slate-200 text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-500">
-                    <th className="px-5 py-4">Ref IDs</th>
-                    <th className="px-5 py-4">Patient</th>
-                    <th className="px-5 py-4 text-right">Amount</th>
-                    <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4">Timestamp</th>
-                    <th className="px-5 py-4 text-right">Details</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {payments.map((p) => (
-                    <tr key={p._id} className="group transition hover:bg-slate-50">
-                      <td className="px-5 py-4">
-                        <div className="space-y-1">
-                          <p className="font-mono text-[11px] font-semibold text-slate-600">
-                            PAY: {p.paymentId || p._id?.slice(-8).toUpperCase()}
-                          </p>
-                          <p className="font-mono text-[11px] text-slate-400">
-                            TXN: {p.txnId || "N/A"}
-                          </p>
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4 text-sm font-bold text-slate-700">
-                        {p.patientId || "Unknown"}
-                      </td>
-
-                      <td className="px-5 py-4 text-right text-sm md:text-base font-extrabold text-blue-600">
-                        LKR {Number(p.amount || 0).toLocaleString()}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex rounded-xl border px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest ${
-                            p.status === "completed"
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                              : p.status === "pending"
-                              ? "border-amber-200 bg-amber-50 text-amber-600"
-                              : "border-red-200 bg-red-50 text-red-600"
-                          }`}
-                        >
-                          {p.status}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-4 text-[11px] font-semibold uppercase text-slate-500">
-                        <div>{new Date(p.createdAt).toLocaleDateString()}</div>
-                        <div className="mt-1">
-                          {new Date(p.createdAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4 text-right">
-                        <button className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:scale-105 hover:bg-blue-600 hover:text-white">
-                          <ArrowUpRight size={17} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                {reporting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />} 
+                Generate Financial Report
+            </button>
+            <button 
+                onClick={exportToCSV}
+                className="flex items-center gap-2 px-6 py-3 bg-[#1e293b] text-white text-xs font-black rounded-2xl shadow-lg hover:bg-slate-800 transition-all uppercase tracking-widest"
+            >
+                <Download size={16} /> Export CSV
+            </button>
         </div>
       </div>
+
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+          <input
+            type="text"
+            placeholder="Search by Reference ID..."
+            className="w-full h-14 pl-12 pr-4 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-[1.2rem] border border-slate-100 shadow-inner">
+          {["ALL", "COMPLETED", "PENDING", "FAILED"].map(status => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterStatus === status ? 'bg-[#2563eb] text-white shadow-md' : 'bg-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map(s => (
+          <div key={s.title} className="p-5 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{s.title}</p>
+              <h3 className="text-lg font-black text-slate-900 mt-1">{s.value}</h3>
+            </div>
+            <div className={`p-3 rounded-2xl ${s.bg} ${s.color}`}><s.icon size={18} /></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        <AdminTable 
+          columns={columns} 
+          data={filteredPayments} 
+          loading={loading} 
+          error={error} 
+          onRetry={fetchData} 
+          emptyMessage="No Transactions Found"
+        />
+      </div>
+
+      {/* Details Modal */}
+      {selectedPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-[#2563eb] text-white rounded-2xl shadow-lg">
+                  <CreditCard size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-[#1e293b] uppercase">Transaction Info</h2>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Detail Monitoring</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedPayment(null)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                 <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reference ID</p>
+                  <p className="text-sm font-bold text-slate-700 font-mono">{selectedPayment.paymentId}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</p>
+                  <p className="text-lg font-black text-[#2563eb]">LKR {selectedPayment.amount.toLocaleString()}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</p>
+                  <span className={`inline-flex px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${selectedPayment.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                    {selectedPayment.status}
+                  </span>
+                </div>
+                 <div className="space-y-1">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Patient ID</p>
+                  <p className="text-sm font-bold text-slate-700 font-mono">{selectedPayment.patientId}</p>
+                </div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3">
+                <Calendar size={18} className="text-[#2563eb]" />
+                <div className="text-xs font-bold text-slate-600">
+                  Processed on {new Date(selectedPayment.createdAt).toLocaleString()}
+                </div>
+              </div>
+            </div>
+            <div className="p-8 pt-0">
+              <button onClick={() => setSelectedPayment(null)} className="w-full py-4 bg-[#1e293b] text-white font-black rounded-2xl hover:bg-slate-800 transition-all uppercase tracking-widest shadow-lg">
+                Close Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
