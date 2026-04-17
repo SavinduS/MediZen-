@@ -199,6 +199,12 @@ function AppContent() {
                       Profile
                     </Link>
                     <Link
+                      to="/reports"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Medical Reports
+                    </Link>
+                    <Link
                       to="/my-appointments"
                       className="hover:text-blue-400 transition text-blue-100"
                     >

@@ -6,30 +6,39 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchPatientReportsById } from '../services/api';
-import { FileText, Download, ArrowLeft, User, Calendar, Shield } from 'lucide-react';
+import { fetchPatientReportsById, fetchUserByClerkId } from '../services/api';
+import { FileText, Download, ArrowLeft, User, Calendar, Shield, Mail } from 'lucide-react';
 
 const PatientReportViewer = () => {
     const { patientId } = useParams();
     const navigate = useNavigate();
     const [reports, setReports] = useState([]);
+    const [patientEmail, setPatientEmail] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const loadReports = async () => {
+        const loadData = async () => {
             try {
-                const response = await fetchPatientReportsById(patientId);
-                setReports(response.data || []);
+                // Fetch reports and patient info in parallel
+                const [reportsRes, userRes] = await Promise.all([
+                    fetchPatientReportsById(patientId),
+                    fetchUserByClerkId(patientId).catch(() => null) // Fallback if user service fails
+                ]);
+                
+                setReports(reportsRes.data || []);
+                if (userRes && userRes.data) {
+                    setPatientEmail(userRes.data.email);
+                }
                 setLoading(false);
             } catch (err) {
-                console.error("Failed to load patient reports:", err);
+                console.error("Failed to load patient data:", err);
                 setError("Could not retrieve medical records for this patient.");
                 setLoading(false);
             }
         };
 
-        if (patientId) loadReports();
+        if (patientId) loadData();
     }, [patientId]);
 
     if (loading) return (
@@ -55,7 +64,10 @@ const PatientReportViewer = () => {
                             <Shield size={14}/> Secure Medical Archive
                         </div>
                         <h2 className="text-3xl font-black tracking-tight mb-2">Patient Medical Records</h2>
-                        <p className="text-slate-400 font-medium">Reviewing history for Patient ID: <span className="text-white font-bold">{patientId}</span></p>
+                        <div className="flex items-center gap-2 text-slate-400 font-medium">
+                           <Mail size={14} className="text-blue-400" />
+                           <span>Records for: <span className="text-white font-bold">{patientEmail || patientId}</span></span>
+                        </div>
                     </div>
 
                     <div className="p-8 md:p-12">
