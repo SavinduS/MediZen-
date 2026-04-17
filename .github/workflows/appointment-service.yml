@@ -60,6 +60,11 @@ jobs:
           method: kubeconfig
           kubeconfig: ${{ secrets.KUBECONFIG }}
 
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "latest"
+
       - name: Deploy to K8s
         uses: azure/k8s-deploy@v4
         with:
@@ -69,4 +74,3 @@ jobs:
             k8s/medizen-config-secrets.yaml
           images: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-appointment-service:${{ github.sha }}
-          kubectl-version: "latest"
