@@ -19,6 +19,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -69,4 +75,3 @@ jobs:
             k8s/medizen-config-secrets.yaml
           images: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-doctor-service:${{ github.sha }}
-          kubectl-version: "latest"
