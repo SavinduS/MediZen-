@@ -27,6 +27,8 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - medizen-network
 
   rabbitmq:
     image: rabbitmq:3-management

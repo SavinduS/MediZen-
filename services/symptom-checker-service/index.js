@@ -58,9 +58,9 @@ const generateAIResponse = async (prompt) => {
         throw new Error("GEMINI_API_KEY not configured");
     }
     
-    console.log("✅ API Key found. Using model: gemini-1.5-flash");
+    console.log("✅ API Key found. Using model: gemini-flash-latest");
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     
     console.log("Calling Gemini API...");
     const result = await model.generateContent(prompt);
@@ -167,7 +167,11 @@ app.get('/health', (req, res) => {
 });
 
 // --- Start Server ---
-const PORT = process.env.PORT || 5005;
-app.listen(PORT, () => {
-    console.log(`🚀 AI Symptom Checker running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    const PORT = process.env.PORT || 5005;
+    app.listen(PORT, () => {
+        console.log(`🚀 AI Symptom Checker running on port ${PORT}`);
+    });
+}
+
+module.exports = app;
