@@ -35,6 +35,9 @@ import PaymentCheckout from "./pages/PaymentCheckout.jsx";
 import PaymentStatus from "./pages/PaymentStatus";
 import ReceiptPage from "./pages/ReceiptPage";
 
+// Components
+import Footer from "./components/Footer";
+
 // Admin Layout & Pages
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminOverview from "./pages/admin/AdminOverview";
@@ -427,9 +430,7 @@ function AppContent() {
         </Routes>
       </main>
 
-      <footer className="py-8 bg-white border-t border-slate-200 text-center text-slate-500 text-sm">
-        &copy; 2026 MediZen Healthcare
-      </footer>
+      <Footer />
     </div>
   );
 }
