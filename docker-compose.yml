@@ -92,10 +92,11 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
-      - PATIENT_SERVICE_URL=http://patient-service:5002
+      - PATIENT_SERVICE_URL=http://api-gateway:5000
     depends_on:
       - mongodb-ai
       - patient-service
+      - api-gateway
     networks:
       - medizen-network
 
@@ -142,8 +143,38 @@ services:
       - "5009:5009"
     environment:
       - MONGO_URI=mongodb://mongodb:27017/admin_db
+      - DOCTOR_SERVICE_URL=http://api-gateway:5000
+      - AUTH_SERVICE_URL=http://api-gateway:5000
     depends_on:
       - mongodb
+      - api-gateway
+    networks:
+      - medizen-network
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - PATIENT_SERVICE_URL=http://patient-service:5002
+      - DOCTOR_SERVICE_URL=http://doctor-service:5003
+      - APPOINTMENT_SERVICE_URL=http://appointment-service:5004
+      - SYMPTOM_SERVICE_URL=http://symptom-checker:5005
+      - TELEMEDICINE_SERVICE_URL=http://telemedicine-service:5006
+      - PAYMENT_SERVICE_URL=http://payment-service:5007
+      - NOTIFICATION_SERVICE_URL=http://notification-service:5008
+      - ADMIN_SERVICE_URL=http://admin-service:5009
+    depends_on:
+      - auth-service
+      - patient-service
+      - doctor-service
+      - appointment-service
+      - symptom-checker
+      - telemedicine-service
+      - payment-service
+      - notification-service
+      - admin-service
     networks:
       - medizen-network
 
@@ -151,11 +182,10 @@ services:
     build: ./client
     ports:
       - "5173:80"
+    environment:
+      - VITE_GATEWAY_URL=http://localhost:5000
     depends_on:
-      - auth-service
-      - patient-service
-      - doctor-service
-      - appointment-service
+      - api-gateway
     networks:
       - medizen-network
 
