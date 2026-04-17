@@ -152,7 +152,7 @@ services:
   api-gateway:
     build: ./services/api-gateway
     ports:
-      - "5010:5000"
+      - "5000:5000"
     environment:
       - AUTH_SERVICE_URL=http://auth-service:5001
       - PATIENT_SERVICE_URL=http://patient-service:5002
@@ -171,7 +171,7 @@ services:
     ports:
       - "5173:80"
     environment:
-      - VITE_GATEWAY_URL=http://localhost:5010
+      - VITE_GATEWAY_URL=http://localhost:5000
     depends_on:
       - api-gateway
     networks:
