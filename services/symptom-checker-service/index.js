@@ -11,9 +11,10 @@ const client = require('prom-client');
 const app = express();
 
 // --- Database Connection ---
-mongoose.connect(process.env.MONGO_URI || 'mongodb://mongodb-ai:27017/symptom_db')
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongodb-ai:27017/symptom_db';
+mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ AI Service connected to MongoDB"))
-    .catch(err => console.error("❌ MongoDB connection error:", err));
+    .catch(err => console.error("❌ MongoDB connection error:", err.message));
 
 // --- SymptomLog Model ---
 const SymptomLogSchema = new mongoose.Schema({
@@ -45,16 +46,27 @@ const symptomSchema = Joi.object({
     clerkId: Joi.string().optional()
 });
 
-// --- AI Logic ---
-async function generateAIResponse(prompt) {
-    if (!process.env.GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY is not configured");
+/**
+ * Helper to generate AI response from Gemini
+ */
+const generateAIResponse = async (prompt) => {
+    console.log("Checking GEMINI_API_KEY...");
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey || apiKey === "your_actual_google_gemini_api_key_here") {
+        console.error("❌ GEMINI_API_KEY is missing or invalid");
+        throw new Error("GEMINI_API_KEY not configured");
     }
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    
+    console.log("✅ API Key found. Using model: gemini-1.5-flash");
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    console.log("Calling Gemini API...");
     const result = await model.generateContent(prompt);
-    return result.response.text();
-}
+    const response = await result.response;
+    return response.text();
+};
 
 // --- Middleware ---
 app.use(cors());
@@ -82,7 +94,7 @@ app.post('/api/symptom-check', async (req, res) => {
         const { symptoms, clerkId } = value;
         let personalizationContext = "";
 
-        // --- Choice B: Personalized AI logic ---
+        // Fetch patient personalization data if clerkId is provided
         if (clerkId && process.env.PATIENT_SERVICE_URL) {
             try {
                 const response = await axios.get(`${process.env.PATIENT_SERVICE_URL}/api/patient/internal/${clerkId}`);
@@ -93,7 +105,6 @@ app.post('/api/symptom-check', async (req, res) => {
 Please take this context into account for safer and more personalized advice.`;
             } catch (err) {
                 console.warn("Could not fetch patient personalization data:", err.message);
-                // Continue with generic response if personalization fails
             }
         }
 
@@ -108,6 +119,7 @@ Tasks:
 3. Recommend one doctor specialty.
 Keep it concise and professional.`;
 
+        // CALLING THE HELPER
         const aiText = await generateAIResponse(promptText);
 
         const newLog = new SymptomLog({
