@@ -19,11 +19,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: "latest"
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -70,3 +65,4 @@ jobs:
             k8s/medizen-config-secrets.yaml
           images: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-patient-service:${{ github.sha }}
+          kubectl-version: "latest"
