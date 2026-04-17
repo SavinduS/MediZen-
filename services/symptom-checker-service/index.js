@@ -9,6 +9,8 @@ const axios = require('axios');
 const client = require('prom-client');
 
 const app = express();
+app.use(express.json());
+app.use(cors());
 
 // --- Database Connection ---
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongodb-ai:27017/symptom_db';
@@ -83,7 +85,7 @@ const generateAIResponse = async (prompt, history = []) => {
 // ... (Middleware and Metrics remain same)
 
 // --- History Endpoint ---
-app.get('/api/symptom-check/history/:clerkId', async (req, res) => {
+app.get('/history/:clerkId', async (req, res) => {
     try {
         const history = await SymptomLog.find({ clerkId: req.params.clerkId }).sort({ timestamp: 1 });
         res.status(200).json({ status: "success", data: history });
@@ -93,7 +95,7 @@ app.get('/api/symptom-check/history/:clerkId', async (req, res) => {
 });
 
 // --- MAIN API ---
-app.post('/api/symptom-check', async (req, res) => {
+app.post('/', async (req, res) => {
     try {
         const { error, value } = symptomSchema.validate(req.body);
 
