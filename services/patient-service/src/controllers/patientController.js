@@ -120,12 +120,23 @@ const getInternalProfile = async (req, res) => {
   }
 };
 
+const getReportsByPatientId = async (req, res) => {
+  try {
+    const reports = await Report.find({ patientClerkId: req.params.patientId }).sort({
+      uploadedAt: -1,
+    });
+    res.json(reports);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   uploadReport,
   getReports,
   deleteReport,
-
-  getInternalProfile
+  getInternalProfile,
+  getReportsByPatientId
 };

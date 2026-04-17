@@ -1,24 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: admin-deployment
+  name: auth-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: admin-service
+      app: auth-service
   template:
     metadata:
       labels:
-        app: admin-service
+        app: auth-service
     spec:
       containers:
-      - name: admin-service
-        image: savindus/medizen-admin-service:latest
-        imagePullPolicy: Always
+      - name: auth-service
+        image: savindus/medizen-auth-service:latest
         ports:
-        - containerPort: 5009
+        - containerPort: 5001
         env:
+        - name: CLERK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: CLERK_SECRET_KEY
         - name: MONGO_URI
           valueFrom:
             secretKeyRef:
@@ -28,12 +32,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: admin-service
+  name: auth-service
 spec:
   selector:
-    app: admin-service
+    app: auth-service
   ports:
     - protocol: TCP
-      port: 5009
-      targetPort: 5009
+      port: 5001
+      targetPort: 5001
   type: ClusterIP

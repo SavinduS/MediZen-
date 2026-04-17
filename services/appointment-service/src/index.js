@@ -32,4 +32,4 @@ mongoose.connect(MONGO_URI)
         await connectRabbitMQ();
         app.listen(PORT, () => console.log(`🚀 Appointment Service running on port ${PORT}`));
     })
-    .catch(err => console.error('❌ Connection Error:', err.message));
+    .catch(err => console.error('❌ Connection Error:', err.message));// CI/CD Deployment Trigger

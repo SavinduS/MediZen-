@@ -64,4 +64,4 @@ mongoose.connect(MONGO_URI)
 // Global unhandled rejection handler
 process.on('unhandledRejection', (err) => {
     console.error(`Unhandled Rejection: ${err.message}`);
-});
+});// CI/CD Deployment Trigger

@@ -12,14 +12,21 @@ const appointmentAPI = axios.create({ baseURL: 'http://localhost:5004/api/appoin
 const videoAPI = axios.create({ baseURL: 'http://localhost:5006/api/sessions' });
 const paymentAPI = axios.create({ baseURL: 'http://localhost:5007/api/payments' });
 const adminAPI = axios.create({ baseURL: 'http://localhost:5009/api/admin' });
+const symptomAPI = axios.create({ baseURL: 'http://localhost:5005/api/symptom-check' });
 
 // --- AUTH SERVICE CALLS (PORT 5001) ---
 export const syncUser = (email, token) =>
   authAPI.post('/sync', { email }, { headers: { Authorization: `Bearer ${token}` } });
 
+export const fetchAllAuthUsers = () =>
+  authAPI.get('/users');
+
 // --- PATIENT SERVICE CALLS (PORT 5002) ---
 export const fetchPatientProfile = (token) =>
   patientAPI.get('/profile', { headers: { Authorization: `Bearer ${token}` } });
+
+export const fetchPatientInternalProfile = (clerkId) =>
+  patientAPI.get(`/internal/${clerkId}`);
 
 export const updatePatientProfile = (data, token) =>
   patientAPI.put('/profile', data, { headers: { Authorization: `Bearer ${token}` } });
@@ -34,6 +41,9 @@ export const uploadMedicalReport = (formData, token) =>
 
 export const fetchMedicalReports = (token) =>
   patientAPI.get('/reports', { headers: { Authorization: `Bearer ${token}` } });
+
+export const fetchPatientReportsById = (patientId) => 
+  patientAPI.get(`/reports/${patientId}`);
 
 // --- DOCTOR SERVICE CALLS (PORT 5003) ---
 export const fetchDoctors = () => doctorAPI.get('/');
@@ -105,3 +115,6 @@ export const fetchNotificationPrefs = (userId, token) =>
 
 export const updateNotificationPrefs = (data, token) => 
   adminAPI.put('/notifications/prefs', data, { headers: { Authorization: `Bearer ${token}` } });
+
+// --- SYMPTOM CHECKER CALLS (PORT 5005) ---
+export const checkSymptoms = (data) => symptomAPI.post('/', data);

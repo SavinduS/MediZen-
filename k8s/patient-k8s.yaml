@@ -1,42 +1,38 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: appointment-deployment
+  name: patient-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: appointment-service
+      app: patient-service
   template:
     metadata:
       labels:
-        app: appointment-service
+        app: patient-service
     spec:
       containers:
-      - name: appointment-service
-        image: savindus/medizen-appointment-service:latest
+      - name: patient-service
+        image: savindus/medizen-patient-service:latest
         ports:
-        - containerPort: 5004
+        - containerPort: 5002
         env:
         - name: MONGO_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
               key: MONGO_URI
-        envFrom:
-        - configMapRef:
-            name: appointment-config
-
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: appointment-service
+  name: patient-service
 spec:
   selector:
-    app: appointment-service
+    app: patient-service
   ports:
     - protocol: TCP
-      port: 5004
-      targetPort: 5004
+      port: 5002
+      targetPort: 5002
   type: ClusterIP

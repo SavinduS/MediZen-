@@ -1,4 +1,4 @@
-name: Telemedicine Service CI
+name: Telemedicine Service CI/CD
 
 on:
   push:
@@ -18,6 +18,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -52,4 +57,20 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-telemedicine-service:latest
+            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-telemedicine-service:${{ github.sha }}
+
+      - name: Set K8s Context
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Deploy to K8s
+        uses: azure/k8s-deploy@v4
+        with:
+          action: deploy
+          manifests: |
+            k8s/telemedicine-k8s.yaml
+            k8s/medizen-config-secrets.yaml
+          images: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-telemedicine-service:${{ github.sha }}

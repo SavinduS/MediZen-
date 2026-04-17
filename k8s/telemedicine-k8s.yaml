@@ -15,9 +15,15 @@ spec:
     spec:
       containers:
       - name: telemedicine-service
-        image: medizen-telemedicine-service:latest
+        image: savindus/medizen-telemedicine-service:latest
         ports:
         - containerPort: 5006
+        env:
+        - name: MONGO_URI
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: MONGO_URI
         envFrom:
         - configMapRef:
             name: telemedicine-config # Environment variables set through ConfigMap

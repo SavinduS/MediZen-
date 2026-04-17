@@ -119,47 +119,69 @@ exports.cancelAppointment = async (req, res) => {
 // @route   GET /api/doctors/:id/slots?date=YYYY-MM-DD
 exports.getAvailableSlots = async (req, res) => {
     try {
-        const doctorId = req.params.id;
+        const idParam = req.params.id;
         const { date } = req.query; // Format: YYYY-MM-DD
 
         if (!date) {
             return res.status(400).json({ message: 'Date query parameter is required' });
         }
 
-        // 1. Get Doctor's Weekly Availability from Doctor Service
-        // Note: Assuming Doctor Service is running on localhost:5003
-        const doctorServiceUrl = `http://localhost:5003/api/doctors/${doctorId}/availability`;
+        // 1. Get Doctor's ID (could be internal ID or custom doctorId)
+        // We first try to fetch by the param provided. 
+        // We need to know if we should call /api/doctors/:id/availability or /api/doctors/user/:userId/availability
+        // The doctor-service has getDoctorById (params.id) and getDoctorByUserId (params.userId)
+        
+        let doctorInternalId = idParam;
+        
+        // If the ID looks like a custom DOC-XXXX ID, we might need to find the internal ID first
+        // But the doctor-service availability route we implemented uses the internal MongoDB _id
+        // Let's call a discovery endpoint or just try to get the profile.
+        
+        let doctorProfile;
+        try {
+            // Try as internal ID
+            const profileRes = await axios.get(`http://localhost:5003/api/doctors/${idParam}`);
+            doctorProfile = profileRes.data;
+            doctorInternalId = doctorProfile._id;
+        } catch (e) {
+            // If failed, maybe it's the custom doctorId string?
+            // We'll search for the doctor by their custom ID if needed, 
+            // but for now let's assume the frontend passes the _id or we handle the mapping.
+            console.error("Could not find doctor by ID:", idParam);
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+
+        // 2. Get Weekly Availability
+        const doctorServiceUrl = `http://localhost:5003/api/doctors/${doctorInternalId}/availability`;
         const response = await axios.get(doctorServiceUrl);
         const weeklyAvailability = response.data;
 
-        // 2. Determine the day of the week for the requested date
+        // 3. Determine the day of the week
         const requestedDate = new Date(date);
         const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayName = days[requestedDate.getDay()];
 
-        // 3. Filter availability for that specific day
-        const daySlots = weeklyAvailability.filter(slot => slot.dayOfWeek === dayName && slot.isAvailable);
+        // 4. Filter availability
+        const daySlots = weeklyAvailability.filter(slot => slot.dayOfWeek === dayName);
 
         if (daySlots.length === 0) {
-            return res.status(200).json([]); // No slots defined for this day
+            return res.status(200).json([]); 
         }
 
-        // 4. Fetch existing appointments for this doctor on this date
+        // 5. Fetch existing appointments
         const startOfDay = new Date(date);
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
 
         const existingAppointments = await Appointment.find({
-            doctorId,
+            doctorId: { $in: [doctorInternalId.toString(), doctorProfile.doctorId] },
             slotTime: { $gte: startOfDay, $lte: endOfDay },
             status: { $ne: 'CANCELLED' }
         });
 
-        // 5. Generate hourly slots (or whatever interval is preferred) and filter out booked ones
-        // For simplicity, we assume the availability defines the range, and we return available hours
+        // 6. Generate slots
         let freeSlots = [];
-        
         daySlots.forEach(avail => {
             let current = new Date(`${date}T${avail.startTime}:00`);
             const end = new Date(`${date}T${avail.endTime}:00`);
@@ -170,10 +192,8 @@ exports.getAvailableSlots = async (req, res) => {
                 );
 
                 if (!isBooked) {
-                    freeSlots.push(new Date(current));
+                    freeSlots.push(new Date(current).toISOString());
                 }
-                
-                // Advance by 1 hour (Default consultation duration)
                 current.setHours(current.getHours() + 1);
             }
         });

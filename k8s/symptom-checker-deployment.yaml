@@ -25,3 +25,8 @@ spec:
             secretKeyRef:
               name: medizen-secrets
               key: GEMINI_API_KEY
+        - name: PATIENT_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: PATIENT_SERVICE_URL
