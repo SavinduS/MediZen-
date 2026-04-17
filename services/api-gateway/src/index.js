@@ -30,7 +30,11 @@ const routes = [
     { context: '/api/doctors/:id/slots', target: services.appointment }, // Specific route first
     { context: '/api/doctors', target: services.doctor },
     { context: '/api/appointments', target: services.appointment },
-    { context: '/api/symptom-check', target: services.symptom },
+    { 
+        context: '/api/symptom-check', 
+        target: services.symptom,
+        pathRewrite: { '^/api/symptom-check/?': '/' } 
+    },
     { context: '/api/sessions', target: services.telemedicine },
     { context: '/api/payments', target: services.payment },
     { context: '/api/notifications', target: services.notification },
@@ -49,7 +53,7 @@ routes.forEach(route => {
     app.use(route.context, createProxyMiddleware({
         target: route.target,
         changeOrigin: true,
-        // pathRewrite: { [`^${route.context}`]: route.context }, // Keep the prefix
+        pathRewrite: route.pathRewrite || {}, // Apply rewrite if defined
     }));
 });
 
