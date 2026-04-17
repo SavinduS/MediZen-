@@ -1,0 +1,11 @@
+{
+  "name": "medizen",
+  "version": "1.0.0",
+  "description": "MediZen Project Root",
+  "main": "run-all.js",
+  "scripts": {
+    "start": "node run-all.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
