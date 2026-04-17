@@ -1,9 +1,9 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const app = require('./index');
+const client = require('prom-client');
 
-// Mock Gemini AI
+// Mock Gemini AI BEFORE requiring app
 jest.mock('@google/generative-ai', () => ({
   GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
     getGenerativeModel: jest.fn().mockReturnValue({
@@ -16,25 +16,23 @@ jest.mock('@google/generative-ai', () => ({
   }))
 }));
 
-// Mock MongoDB connection
-beforeAll(async () => {
-    // Avoid connecting to real MongoDB during tests
-    jest.spyOn(mongoose, 'connect').mockResolvedValue(null);
-    // Mock SymptomLog save
-    const SymptomLog = mongoose.model('SymptomLog');
-    jest.spyOn(SymptomLog.prototype, 'save').mockResolvedValue(null);
-});
-
-afterAll(async () => {
-    await mongoose.connection.close();
-});
+const app = require('./index');
 
 describe('AI Symptom Checker API Integration', () => {
-    process.env.GEMINI_API_KEY = 'test_key';
+    beforeAll(async () => {
+        process.env.GEMINI_API_KEY = 'test_key';
+        process.env.NODE_ENV = 'test';
+    });
+
+    afterAll(async () => {
+        // Clean up
+        await mongoose.connection.close();
+        client.register.clear();
+    });
 
     it('should return 400 if symptoms description is too short', async () => {
         const res = await request(app)
-            .post('/api/symptom-check')
+            .post('/')
             .send({ symptoms: 'Too short' });
         
         expect(res.statusCode).toEqual(400);
@@ -44,7 +42,7 @@ describe('AI Symptom Checker API Integration', () => {
 
     it('should return 200 and AI suggestion for valid input', async () => {
         const res = await request(app)
-            .post('/api/symptom-check')
+            .post('/')
             .send({ symptoms: 'I have a severe headache and blurred vision for three hours.' });
         
         expect(res.statusCode).toEqual(200);
@@ -52,14 +50,16 @@ describe('AI Symptom Checker API Integration', () => {
         expect(res.body.ai_suggestion).toContain('Mocked AI Response');
     });
 
-    it('should return 429 if rate limit is exceeded (simulated)', async () => {
-        // We can mock generateAIResponse to throw a rate limit error
-        // But for simplicity, we verified the logic in index.js handles it.
-    });
-
     it('should return 200 for health check', async () => {
         const res = await request(app).get('/health');
         expect(res.statusCode).toEqual(200);
         expect(res.body.status).toEqual('UP');
+    });
+
+    it('should return Prometheus metrics', async () => {
+        const res = await request(app).get('/metrics');
+        expect(res.statusCode).toEqual(200);
+        expect(res.header['content-type']).toContain('text/plain');
+        expect(res.text).toContain('symptom_checker_ai_requests_total');
     });
 });

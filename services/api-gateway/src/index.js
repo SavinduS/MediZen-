@@ -33,7 +33,7 @@ const routes = [
     { 
         context: '/api/symptom-check', 
         target: services.symptom,
-        pathRewrite: { '^/api/symptom-check': '' } 
+        pathRewrite: { '^/api/symptom-check/?': '/' } 
     },
     { context: '/api/sessions', target: services.telemedicine },
     { context: '/api/payments', target: services.payment },
