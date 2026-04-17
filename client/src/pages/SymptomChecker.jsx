@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from "@clerk/clerk-react";
-import { checkSymptoms } from '../services/api';
+import { checkSymptoms, fetchSymptomHistory } from '../services/api';
 import { Bot, User, Send, Loader2, Info } from 'lucide-react';
 
 const SymptomChecker = () => {
@@ -21,6 +21,37 @@ const SymptomChecker = () => {
     };
 
     useEffect(() => {
+        const loadHistory = async () => {
+            if (user?.id) {
+                try {
+                    const response = await fetchSymptomHistory(user.id);
+                    if (response.data.status === 'success' && response.data.data.length > 0) {
+                        const historyMessages = [];
+                        response.data.data.forEach(log => {
+                            historyMessages.push({
+                                role: 'user',
+                                content: log.symptomsText,
+                                timestamp: new Date(log.timestamp)
+                            });
+                            historyMessages.push({
+                                role: 'bot',
+                                content: log.aiResponse,
+                                timestamp: new Date(log.timestamp)
+                            });
+                        });
+                        // Keep the initial greeting if history is empty, otherwise replace
+                        setMessages(historyMessages);
+                    }
+                } catch (err) {
+                    console.error("Failed to load chat history:", err);
+                }
+            }
+        };
+
+        loadHistory();
+    }, [user]);
+
+    useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
@@ -34,14 +65,22 @@ const SymptomChecker = () => {
             timestamp: new Date()
         };
 
-        setMessages(prev => [...prev, userMessage]);
+        const updatedMessages = [...messages, userMessage];
+        setMessages(updatedMessages);
         setInput('');
         setIsLoading(true);
 
         try {
+            // Filter only user/bot messages for context (Gemini format)
+            const chatHistory = updatedMessages.map(m => ({
+                role: m.role,
+                content: m.content
+            }));
+
             const response = await checkSymptoms({
                 symptoms: input,
-                clerkId: user?.id
+                clerkId: user?.id,
+                history: chatHistory.slice(0, -1) // Send previous context
             });
 
             const botMessage = {

@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   # Databases & Infrastructure
   mongo-db:
@@ -27,6 +26,8 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - medizen-network
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -92,10 +93,9 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
-      - PATIENT_SERVICE_URL=http://patient-service:5002
+      - PATIENT_SERVICE_URL=http://api-gateway:5010
     depends_on:
       - mongodb-ai
-      - patient-service
     networks:
       - medizen-network
 
@@ -142,8 +142,27 @@ services:
       - "5009:5009"
     environment:
       - MONGO_URI=mongodb://mongodb:27017/admin_db
+      - DOCTOR_SERVICE_URL=http://api-gateway:5010
+      - AUTH_SERVICE_URL=http://api-gateway:5010
     depends_on:
       - mongodb
+    networks:
+      - medizen-network
+
+  api-gateway:
+    build: ./services/api-gateway
+    ports:
+      - "5010:5010"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - PATIENT_SERVICE_URL=http://patient-service:5002
+      - DOCTOR_SERVICE_URL=http://doctor-service:5003
+      - APPOINTMENT_SERVICE_URL=http://appointment-service:5004
+      - SYMPTOM_SERVICE_URL=http://symptom-checker:5005
+      - TELEMEDICINE_SERVICE_URL=http://telemedicine-service:5006
+      - PAYMENT_SERVICE_URL=http://payment-service:5007
+      - NOTIFICATION_SERVICE_URL=http://notification-service:5008
+      - ADMIN_SERVICE_URL=http://admin-service:5009
     networks:
       - medizen-network
 
@@ -151,11 +170,10 @@ services:
     build: ./client
     ports:
       - "5173:80"
+    environment:
+      - VITE_GATEWAY_URL=http://localhost:5010
     depends_on:
-      - auth-service
-      - patient-service
-      - doctor-service
-      - appointment-service
+      - api-gateway
     networks:
       - medizen-network
 

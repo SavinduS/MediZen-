@@ -30,6 +30,7 @@ import PatientReportViewer from "./pages/PatientReportViewer";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
+import SymptomChecker from "./pages/SymptomChecker";
 import PaymentCheckout from "./pages/PaymentCheckout.jsx";
 import PaymentStatus from "./pages/PaymentStatus";
 import ReceiptPage from "./pages/ReceiptPage";
@@ -202,6 +203,12 @@ function AppContent() {
                       Medical Reports
                     </Link>
                     <Link
+                      to="/symptoms"
+                      className="hover:text-blue-400 transition text-blue-100 font-bold"
+                    >
+                      AI Symptom Bot
+                    </Link>
+                    <Link
                       to="/profile"
                       className="hover:text-blue-400 transition text-blue-100"
                     >
@@ -270,6 +277,21 @@ function AppContent() {
                   loading={loadingRole}
                 >
                   <MedicalReports />
+                </ProtectedRoute>
+              </SignedIn>
+            }
+          />
+
+          <Route
+            path="/symptoms"
+            element={
+              <SignedIn>
+                <ProtectedRoute
+                  allowedRole="patient"
+                  currentRole={role}
+                  loading={loadingRole}
+                >
+                  <SymptomChecker />
                 </ProtectedRoute>
               </SignedIn>
             }

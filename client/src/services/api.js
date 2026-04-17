@@ -4,15 +4,19 @@
  */
 import axios from 'axios';
 
-// Creating separate instances for each dedicated microservice port
-const authAPI = axios.create({ baseURL: 'http://localhost:5001/api/auth' });
-const patientAPI = axios.create({ baseURL: 'http://localhost:5002/api/patient' });
-const doctorAPI = axios.create({ baseURL: 'http://localhost:5003/api/doctors' });
-const appointmentAPI = axios.create({ baseURL: 'http://localhost:5004/api/appointments' });
-const videoAPI = axios.create({ baseURL: 'http://localhost:5006/api/sessions' });
-const paymentAPI = axios.create({ baseURL: 'http://localhost:5007/api/payments' });
-const adminAPI = axios.create({ baseURL: 'http://localhost:5009/api/admin' });
-const symptomAPI = axios.create({ baseURL: 'http://localhost:5005/api/symptom-check' });
+// Centralized API Gateway URL
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5010';
+
+// Creating separate instances for each dedicated microservice through the Gateway
+const authAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/auth` });
+const patientAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/patient` });
+const doctorAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/doctors` });
+const appointmentAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/appointments` });
+const videoAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/sessions` });
+const paymentAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/payments` });
+const adminAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/admin` });
+const symptomAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/symptom-check` });
+const notificationAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/notifications` });
 
 // --- AUTH SERVICE CALLS (PORT 5001) ---
 export const syncUser = (email, token) =>
@@ -54,7 +58,7 @@ export const deleteDoctorProfile = (id) => doctorAPI.delete(`/${id}`);
 export const getDoctorAvailability = (id) => doctorAPI.get(`/${id}/availability`);
 export const updateDoctorAvailability = (id, slots) => doctorAPI.put(`/${id}/availability`, { slots });
 
-const doctorSlotsAPI = axios.create({ baseURL: 'http://localhost:5004/api/doctors' });
+const doctorSlotsAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/doctors` });
 
 export const registerDoctor = (data, token) =>
   doctorAPI.post('/', data, { headers: { Authorization: `Bearer ${token}` } });
@@ -111,10 +115,11 @@ export const verifyDoctor = (id, token) =>
 
 // --- NOTIFICATION CALLS ---
 export const fetchNotificationPrefs = (userId, token) => 
-  adminAPI.get(`/notifications/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
+  notificationAPI.get(`/prefs/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
 
 export const updateNotificationPrefs = (data, token) => 
-  adminAPI.put('/notifications/prefs', data, { headers: { Authorization: `Bearer ${token}` } });
+  notificationAPI.put('/prefs', data, { headers: { Authorization: `Bearer ${token}` } });
 
 // --- SYMPTOM CHECKER CALLS (PORT 5005) ---
 export const checkSymptoms = (data) => symptomAPI.post('/', data);
+export const fetchSymptomHistory = (clerkId) => symptomAPI.get(`/history/${clerkId}`);

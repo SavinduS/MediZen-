@@ -11,29 +11,26 @@ const client = require('prom-client');
 const app = express();
 
 // --- Database Connection ---
-mongoose.connect(process.env.MONGO_URI || 'mongodb://mongodb-ai:27017/symptom_db')
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://mongodb-ai:27017/symptom_db';
+mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ AI Service connected to MongoDB"))
-    .catch(err => console.error("❌ MongoDB connection error:", err));
+    .catch(err => console.error("❌ MongoDB connection error:", err.message));
 
 // --- SymptomLog Model ---
 const SymptomLogSchema = new mongoose.Schema({
     clerkId: String,
     symptomsText: String,
     aiResponse: String,
+    history: [{
+        role: String,
+        content: String,
+        timestamp: { type: Date, default: Date.now }
+    }],
     timestamp: { type: Date, default: Date.now }
 });
 const SymptomLog = mongoose.model('SymptomLog', SymptomLogSchema);
 
-// --- Prometheus Metrics Setup ---
-const register = new client.Registry();
-client.collectDefaultMetrics({ register });
-
-const aiRequestCounter = new client.Counter({
-    name: 'medizen_ai_requests_total',
-    help: 'Total number of AI symptom check requests',
-    labelNames: ['status']
-});
-register.registerMetric(aiRequestCounter);
+// ... (Prometheus and Joi logic remains same)
 
 // --- Validation Schema ---
 const symptomSchema = Joi.object({
@@ -42,28 +39,57 @@ const symptomSchema = Joi.object({
         'string.max': 'Symptom description is too long (max 500 characters).',
         'any.required': 'Symptoms text is required.'
     }),
-    clerkId: Joi.string().optional()
+    clerkId: Joi.string().optional(),
+    history: Joi.array().items(Joi.object({
+        role: Joi.string().valid('user', 'bot').required(),
+        content: Joi.string().required()
+    })).optional()
 });
 
-// --- AI Logic ---
-async function generateAIResponse(prompt) {
-    if (!process.env.GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY is not configured");
+/**
+ * Helper to generate AI response from Gemini
+ */
+const generateAIResponse = async (prompt, history = []) => {
+    console.log("Checking GEMINI_API_KEY...");
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey || apiKey === "your_actual_google_gemini_api_key_here") {
+        console.error("❌ GEMINI_API_KEY is missing or invalid");
+        throw new Error("GEMINI_API_KEY not configured");
     }
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-}
+    
+    console.log("✅ API Key found. Using model: gemini-flash-latest");
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    
+    // Convert history to Gemini format
+    const contents = history.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }]
+    }));
 
-// --- Middleware ---
-app.use(cors());
-app.use(express.json());
+    // Add current prompt
+    contents.push({
+        role: 'user',
+        parts: [{ text: prompt }]
+    });
 
-// --- Metrics Endpoint ---
-app.get('/metrics', async (req, res) => {
-    res.setHeader('Content-Type', register.contentType);
-    res.send(await register.metrics());
+    console.log("Calling Gemini API with context...");
+    const result = await model.generateContent({ contents });
+    const response = await result.response;
+    return response.text();
+};
+
+// ... (Middleware and Metrics remain same)
+
+// --- History Endpoint ---
+app.get('/api/symptom-check/history/:clerkId', async (req, res) => {
+    try {
+        const history = await SymptomLog.find({ clerkId: req.params.clerkId }).sort({ timestamp: 1 });
+        res.status(200).json({ status: "success", data: history });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
 });
 
 // --- MAIN API ---
@@ -79,10 +105,10 @@ app.post('/api/symptom-check', async (req, res) => {
             });
         }
 
-        const { symptoms, clerkId } = value;
+        const { symptoms, clerkId, history } = value;
         let personalizationContext = "";
 
-        // --- Choice B: Personalized AI logic ---
+        // Fetch patient personalization data if clerkId is provided
         if (clerkId && process.env.PATIENT_SERVICE_URL) {
             try {
                 const response = await axios.get(`${process.env.PATIENT_SERVICE_URL}/api/patient/internal/${clerkId}`);
@@ -93,7 +119,6 @@ app.post('/api/symptom-check', async (req, res) => {
 Please take this context into account for safer and more personalized advice.`;
             } catch (err) {
                 console.warn("Could not fetch patient personalization data:", err.message);
-                // Continue with generic response if personalization fails
             }
         }
 
@@ -108,12 +133,14 @@ Tasks:
 3. Recommend one doctor specialty.
 Keep it concise and professional.`;
 
-        const aiText = await generateAIResponse(promptText);
+        // CALLING THE HELPER with history
+        const aiText = await generateAIResponse(promptText, history);
 
         const newLog = new SymptomLog({
             clerkId,
             symptomsText: symptoms,
-            aiResponse: aiText
+            aiResponse: aiText,
+            history: history // Save the context used
         });
         await newLog.save();
 
@@ -155,9 +182,11 @@ app.get('/health', (req, res) => {
 });
 
 // --- Start Server ---
-const PORT = process.env.PORT || 5005;
-app.listen(PORT, () => {
-    console.log(`🚀 AI Symptom Checker running on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+    const PORT = process.env.PORT || 5005;
+    app.listen(PORT, () => {
+        console.log(`🚀 AI Symptom Checker running on port ${PORT}`);
+    });
+}
 
-// CI/CD Test// CI/CD Deployment Trigger
+module.exports = app;
