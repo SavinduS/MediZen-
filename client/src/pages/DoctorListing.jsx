@@ -246,8 +246,8 @@ const DoctorListing = () => {
                 </button>
                 <button 
                   type="submit"
-                  disabled={isSubmitting || !selectedSlot}
-                  className="flex-1 px-4 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition shadow-xl shadow-blue-200 disabled:bg-slate-300 active:scale-95"
+                  disabled={isSubmitting || !selectedSlot || availableSlots.length === 0}
+                  className="flex-1 px-4 py-4 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition shadow-xl shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
                 >
                   {isSubmitting ? 'Confirming...' : 'Book Now'}
                 </button>
