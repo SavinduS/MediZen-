@@ -25,6 +25,9 @@ export const syncUser = (email, token) =>
 export const fetchAllAuthUsers = () =>
   authAPI.get('/users');
 
+export const fetchUserByClerkId = (clerkId) =>
+  authAPI.get(`/users/${clerkId}`);
+
 // --- PATIENT SERVICE CALLS (PORT 5002) ---
 export const fetchPatientProfile = (token) =>
   patientAPI.get('/profile', { headers: { Authorization: `Bearer ${token}` } });
