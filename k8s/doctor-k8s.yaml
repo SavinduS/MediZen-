@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: doctor-service
-        image: savindus/medizen-doctor-service:latest # This points to your docker image
+        image: savindus/medizen-doctor-service:latest
         ports:
         - containerPort: 5003
         env:

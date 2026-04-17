@@ -1,4 +1,4 @@
-name: Notification Service CI
+name: Notification Service CI/CD
 
 on:
   push:
@@ -49,3 +49,20 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-notification-service:latest
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-notification-service:${{ github.sha }}
+
+      - name: Set K8s Context
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Deploy to K8s
+        uses: azure/k8s-deploy@v4
+        with:
+          action: deploy
+          manifests: |
+            k8s/notification-k8s.yaml
+            k8s/medizen-config-secrets.yaml
+          images: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-notification-service:${{ github.sha }}
+          kubectl-version: "latest"

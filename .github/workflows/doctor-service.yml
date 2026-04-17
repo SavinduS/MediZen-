@@ -1,4 +1,4 @@
-name: Doctor Service CI
+name: Doctor Service CI/CD
 
 on:
   push:
@@ -53,3 +53,20 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-doctor-service:latest
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-doctor-service:${{ github.sha }}
+
+      - name: Set K8s Context
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Deploy to K8s
+        uses: azure/k8s-deploy@v4
+        with:
+          action: deploy
+          manifests: |
+            k8s/doctor-k8s.yaml
+            k8s/medizen-config-secrets.yaml
+          images: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-doctor-service:${{ github.sha }}
+          kubectl-version: "latest"

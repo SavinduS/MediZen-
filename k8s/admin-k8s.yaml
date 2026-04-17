@@ -15,6 +15,7 @@ spec:
       containers:
       - name: admin-service
         image: savindus/medizen-admin-service:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 5009
         env:
