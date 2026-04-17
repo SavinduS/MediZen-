@@ -5,7 +5,7 @@
 import axios from 'axios';
 
 // Centralized API Gateway URL
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5000';
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://localhost:5010';
 
 // Creating separate instances for each dedicated microservice through the Gateway
 const authAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/auth` });

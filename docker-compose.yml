@@ -93,7 +93,7 @@ services:
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
-      - PATIENT_SERVICE_URL=http://api-gateway:5000
+      - PATIENT_SERVICE_URL=http://api-gateway:5010
     depends_on:
       - mongodb-ai
     networks:
@@ -142,8 +142,8 @@ services:
       - "5009:5009"
     environment:
       - MONGO_URI=mongodb://mongodb:27017/admin_db
-      - DOCTOR_SERVICE_URL=http://api-gateway:5000
-      - AUTH_SERVICE_URL=http://api-gateway:5000
+      - DOCTOR_SERVICE_URL=http://api-gateway:5010
+      - AUTH_SERVICE_URL=http://api-gateway:5010
     depends_on:
       - mongodb
     networks:
@@ -152,7 +152,7 @@ services:
   api-gateway:
     build: ./services/api-gateway
     ports:
-      - "5000:5000"
+      - "5010:5010"
     environment:
       - AUTH_SERVICE_URL=http://auth-service:5001
       - PATIENT_SERVICE_URL=http://patient-service:5002
@@ -171,7 +171,7 @@ services:
     ports:
       - "5173:80"
     environment:
-      - VITE_GATEWAY_URL=http://localhost:5000
+      - VITE_GATEWAY_URL=http://localhost:5010
     depends_on:
       - api-gateway
     networks:

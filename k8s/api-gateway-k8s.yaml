@@ -16,7 +16,7 @@ spec:
         - name: api-gateway
           image: api-gateway:latest
           ports:
-            - containerPort: 5000
+            - containerPort: 5010
           env:
             - name: AUTH_SERVICE_URL
               value: "http://auth-service:5001"
@@ -48,5 +48,5 @@ spec:
     app: api-gateway
   ports:
     - protocol: TCP
-      port: 5000
-      targetPort: 5000
+      port: 5010
+      targetPort: 5010
