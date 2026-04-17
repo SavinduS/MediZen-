@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
+import { useAuth } from "@clerk/clerk-react";
 import AdminTable from "../../components/AdminTable";
 import { 
   Users, Search, Shield, User, Calendar, 
@@ -15,6 +16,7 @@ export default function AdminDoctors() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSpecialty, setFilterSpecialty] = useState("ALL");
+  const { getToken } = useAuth();
   
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -35,7 +37,10 @@ export default function AdminDoctors() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get("http://localhost:5003/api/doctors/admin/all");
+      const token = await getToken();
+      const res = await axios.get("http://localhost:5003/api/doctors/admin/all", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = res.data.data || [];
       const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setDoctors(sorted);
@@ -48,12 +53,12 @@ export default function AdminDoctors() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [getToken]);
 
   const filteredDoctors = useMemo(() => {
     return doctors.filter(d => {
       const matchesSearch = (d.name || "").toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSpec = filterSpecialty === "ALL" || (d.specialization || "").toUpperCase() === filterSpecialty;
+      const matchesSpec = filterSpecialty === "ALL" || (d.specialization || "").toUpperCase() === filterSpecialty.toUpperCase();
       return matchesSearch && matchesSpec;
     });
   }, [doctors, searchTerm, filterSpecialty]);
@@ -82,7 +87,10 @@ export default function AdminDoctors() {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this doctor?")) return;
     try {
-      await axios.delete(`http://localhost:5003/api/doctors/admin/${id}`);
+      const token = await getToken();
+      await axios.delete(`http://localhost:5003/api/doctors/admin/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       toast.success("Doctor deleted successfully");
       fetchData();
     } catch (err) {
@@ -94,9 +102,11 @@ export default function AdminDoctors() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const token = await getToken();
       if (isEditing) {
         await axios.put(`http://localhost:5003/api/doctors/admin/${formData._id}`,
-          formData
+          formData,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         toast.success("Doctor updated successfully");
       } else {
@@ -104,7 +114,9 @@ export default function AdminDoctors() {
         const payload = { ...formData };
         if (!payload.email) delete payload.email;
         if (!payload.password) delete payload.password;
-        await axios.post("http://localhost:5003/api/doctors/admin/add", payload);
+        await axios.post("http://localhost:5003/api/doctors/admin/add", payload, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         toast.success("Doctor added successfully");
       }
       setShowModal(false);

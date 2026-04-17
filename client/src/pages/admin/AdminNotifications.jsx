@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from "@clerk/clerk-react";
 import AdminTable from "../../components/AdminTable";
 import { 
   Bell, Mail, Smartphone, Loader2, RefreshCw, MessageSquare, 
@@ -12,6 +13,7 @@ export default function AdminNotifications() {
   const [error, setError] = useState(null);
   const [prefs, setPrefs] = useState({ emailEnabled: true, smsEnabled: true });
   const [saving, setSaving] = useState(false);
+  const { getToken } = useAuth();
 
   const userId = "admin_001";
 
@@ -19,9 +21,11 @@ export default function AdminNotifications() {
     setLoading(true);
     setError(null);
     try {
+      const token = await getToken();
+      const headers = { Authorization: `Bearer ${token}` };
       const [lRes, pRes] = await Promise.all([
-        axios.get("http://localhost:5008/api/notifications/logs"),
-        axios.get(`http://localhost:5008/api/notifications/prefs/${userId}`).catch(() => ({ data: { data: { emailEnabled: true, smsEnabled: true } } }))
+        axios.get("http://localhost:5008/api/notifications/logs", { headers }),
+        axios.get(`http://localhost:5008/api/notifications/prefs/${userId}`, { headers }).catch(() => ({ data: { data: { emailEnabled: true, smsEnabled: true } } }))
       ]);
       // Sorting: Latest first
       const data = lRes.data.data || [];
@@ -37,14 +41,18 @@ export default function AdminNotifications() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [getToken]);
 
   const handleToggle = async (key) => {
     const newPrefs = { ...prefs, [key]: !prefs[key] };
     setPrefs(newPrefs);
     setSaving(true);
     try {
-      await axios.put("http://localhost:5008/api/notifications/prefs", { userId, ...newPrefs });
+      const token = await getToken();
+      await axios.put("http://localhost:5008/api/notifications/prefs", 
+        { userId, ...newPrefs },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
     } catch (err) {
       console.error("Failed to update prefs");
     } finally {

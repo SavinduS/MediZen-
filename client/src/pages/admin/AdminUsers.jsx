@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from "@clerk/clerk-react";
 import AdminTable from "../../components/AdminTable";
 import { Users, Search, Mail, Shield, User } from 'lucide-react';
 
@@ -8,12 +9,16 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const { getToken } = useAuth();
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get("http://localhost:5001/api/auth/users");
+      const token = await getToken();
+      const res = await axios.get("http://localhost:5001/api/auth/users", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const data = res.data.data || [];
       const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setUsers(sorted);
@@ -26,7 +31,7 @@ export default function AdminUsers() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [getToken]);
 
   const filteredUsers = users.filter(u => 
     (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())

@@ -2,22 +2,34 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // Primary connection (admin_db)
-    const adminConn = await mongoose.connect(process.env.MONGODB_URI);
-    console.log(`Admin DB Connected: ${adminConn.connection.host}`);
+    // Primary connection (admin_db) - Default to localhost:27017
+    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/admin_db';
     
-    // Additional connections for cross-db queries
-    // Usually these would be from their own env vars, but I'll use placeholders 
-    // reflecting the requirements or the same host with different DB names.
-    const doctorConn = mongoose.createConnection(process.env.DOCTOR_DB_URI || 'mongodb://localhost:27017/doctor_db');
-    const paymentConn = mongoose.createConnection(process.env.PAYMENT_DB_URI || 'mongodb://localhost:27017/payment_db');
-    const patientConn = mongoose.createConnection(process.env.PATIENT_DB_URI || 'mongodb://localhost:27017/patient_db');
-    const appointmentConn = mongoose.createConnection(process.env.APPOINTMENT_DB_URI || 'mongodb://localhost:27017/appointment_db');
-    const authConn = mongoose.createConnection(process.env.AUTH_DB_URI || 'mongodb://localhost:27017/users');
+    // Establishing the primary connection
+    await mongoose.connect(mongoUri);
+    const conn = mongoose.connection;
+    
+    console.log(`Admin DB Connected: ${conn.host}:${conn.port}`);
+    
+    // Switching to target databases on the same MongoDB instance using useDb()
+    const authConn = conn.useDb('users', { useCache: true });
+    const patientConn = conn.useDb('patient_db', { useCache: true });
+    const doctorConn = conn.useDb('doctor_db', { useCache: true });
+    const appointmentConn = conn.useDb('appointment_db', { useCache: true });
+    const paymentConn = conn.useDb('payment_db', { useCache: true });
 
-    return { adminConn, doctorConn, paymentConn, patientConn, appointmentConn, authConn };
+    console.log(' [Admin Service] Service databases successfully mapped using useDb()');
+
+    return { 
+        adminConn: conn, 
+        doctorConn, 
+        paymentConn, 
+        patientConn, 
+        appointmentConn, 
+        authConn 
+    };
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error(`MongoDB Connection Error: ${error.message}`);
     process.exit(1);
   }
 };

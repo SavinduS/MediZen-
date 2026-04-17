@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import { useAuth } from "@clerk/clerk-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import AdminTable from "../../components/AdminTable";
 import { 
   CreditCard, Wallet, CheckCircle2, Clock3, XCircle, 
@@ -15,12 +18,16 @@ export default function AdminPayments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [reporting, setReporting] = useState(false);
+  const { getToken } = useAuth();
 
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get("http://localhost:5007/api/payments");
+      const token = await getToken();
+      const res = await axios.get("http://localhost:5007/api/payments", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       // Sorting: Latest first (LIFO)
       const data = res.data.data || [];
       const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -34,7 +41,7 @@ export default function AdminPayments() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [getToken]);
 
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
@@ -46,43 +53,82 @@ export default function AdminPayments() {
   }, [payments, filterStatus, searchTerm]);
 
   const exportToCSV = () => {
-    const headers = ["Reference ID", "Amount (LKR)", "Status", "Timestamp"];
+    const headers = ["Transaction ID", "Patient", "Amount (LKR)", "Status", "Date"];
     const rows = filteredPayments.map(p => [
-      p.paymentId,
+      `"${p.paymentId || p.txnId || 'N/A'}"`,
+      `"${p.patientId || 'Unknown'}"`,
       p.amount,
-      p.status,
-      new Date(p.createdAt).toLocaleString()
+      `"${p.status}"`,
+      `"${new Date(p.createdAt).toLocaleDateString()}"`
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers, ...rows].map(e => e.join(",")).join("\n");
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
 
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `MediZen_Transactions_${new Date().toLocaleDateString()}.csv`);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `MediZen_Financial_Records_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
+    toast.success("CSV Exported Successfully");
   };
 
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = () => {
     setReporting(true);
     try {
-      const response = await axios.get("http://localhost:5007/api/payments/reports/all", {
-        responseType: 'blob'
+      const doc = new jsPDF();
+      const totalRevenue = payments.reduce((acc, curr) => acc + (curr.status === 'completed' ? curr.amount : 0), 0);
+      
+      // Title
+      doc.setFontSize(20);
+      doc.setTextColor(30, 41, 59); // slate-800
+      doc.text("Healthcare Platform - Financial Audit Report", 14, 22);
+      
+      // Summary Section
+      doc.setFontSize(12);
+      doc.setTextColor(100);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 32);
+      
+      doc.setDrawColor(226, 232, 240); // slate-200
+      doc.line(14, 36, 196, 36);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(37, 99, 235); // blue-600
+      doc.text("Summary Section", 14, 45);
+      
+      doc.setFontSize(11);
+      doc.setTextColor(51, 65, 85); // slate-700
+      doc.text(`Total Revenue: LKR ${totalRevenue.toLocaleString()}`, 14, 55);
+      doc.text(`Total Transaction Count: ${payments.length}`, 14, 62);
+      doc.text(`Completed Payments: ${payments.filter(p => p.status === 'completed').length}`, 14, 69);
+      
+      // Table
+      const tableColumn = ["Transaction ID", "Patient", "Amount", "Status", "Date"];
+      const tableRows = payments.map(p => [
+        p.paymentId || "N/A",
+        p.patientId || "N/A",
+        `LKR ${p.amount.toLocaleString()}`,
+        p.status.toUpperCase(),
+        new Date(p.createdAt).toLocaleDateString()
+      ]);
+      
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 78,
+        theme: 'striped',
+        headStyles: { fillColor: [37, 99, 235], fontSize: 10, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 4 },
+        alternateRowStyles: { fillColor: [248, 250, 252] }
       });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `MediZen_Financial_Audit_${new Date().toLocaleDateString()}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      toast.success("Financial Report Generated Successfully");
+      
+      doc.save(`MediZen_Financial_Audit_${new Date().toLocaleDateString()}.pdf`);
+      toast.success("Professional Financial Report Generated");
     } catch (err) {
-      console.error("Report generation failed", err);
-      toast.error("Failed to generate financial report");
+      console.error("PDF Generation Error:", err);
+      toast.error("Failed to generate PDF report");
     } finally {
       setReporting(false);
     }

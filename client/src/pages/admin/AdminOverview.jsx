@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
 import {
   Users, UserCog, CalendarDays, CreditCard, Wallet, ShieldCheck, Activity, FileText, UserPlus, Search, Loader2
 } from "lucide-react";
@@ -61,49 +62,84 @@ const StatCard = ({ title, value, change, icon: Icon }) => (
 );
 
 export default function AdminOverview() {
-  const [stats, setStats] = useState(statsDemo);
-  const [recentAppointments, setRecentAppointments] = useState(recentAppointmentsDemo);
-  const [pendingDoctors, setPendingDoctors] = useState(pendingDoctorsInitial);
-  const [users, setUsers] = useState(usersDemo);
+  const [stats, setStats] = useState([]);
+  const [recentAppointments, setRecentAppointments] = useState([]);
+  const [users, setUsers] = useState([]);
   const [userFilter, setUserFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { getToken } = useAuth();
 
   // Auth check and dashboard data fetch
   useEffect(() => {
     let isMounted = true;
     const checkAuthAndFetch = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/login", { replace: true });
-        return;
-      }
       try {
-        // Example: fetch dashboard stats (replace with your real API)
-        const res = await axios.get("http://localhost:5009/api/admin/dashboard-stats", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!isMounted) return;
-        // setStats(res.data.stats); // Uncomment if API returns stats
-        // setRecentAppointments(res.data.recentAppointments); // Uncomment if API returns appointments
-        // setUsers(res.data.users); // Uncomment if API returns users
-        setError(null);
-      } catch (err) {
-        if (err.response && err.response.status === 401) {
-          localStorage.removeItem("token");
-          navigate("/login", { replace: true });
+        const token = await getToken();
+        if (!token) {
+          setError("Session expired. Please refresh.");
+          setLoading(false);
           return;
         }
-        setError("Failed to load dashboard data.");
+        
+        // Fetch real dashboard stats from Admin Service
+        const res = await axios.get("http://localhost:5009/api/admin/stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (!isMounted) return;
+
+        if (res.data && res.data.data) {
+          const apiStats = res.data.data;
+          
+          // Map API data to our stats structure for the UI
+          const updatedStats = [
+            { title: "Total Patients", value: apiStats.totalPatients?.toLocaleString() || "0", change: "Real-time", icon: Users },
+            { title: "Total Doctors", value: apiStats.totalDoctors?.toLocaleString() || "0", change: `${apiStats.pendingDoctorsCount || 0} pending`, icon: UserCog },
+            { title: "Total Appointments", value: apiStats.totalAppointments?.toLocaleString() || "0", change: "Across platform", icon: CalendarDays },
+            { title: "Total Transactions", value: apiStats.totalPayments?.toLocaleString() || "0", change: "Processed", icon: CreditCard },
+            { title: "Revenue", value: `LKR ${apiStats.totalRevenue?.toLocaleString() || "0"}`, change: "Completed", icon: Wallet },
+            { title: "Pending Verifications", value: apiStats.pendingDoctorsCount?.toString() || "0", change: "Needs review", icon: ShieldCheck },
+          ];
+          
+          setStats(updatedStats);
+
+          // Map real lists from DB to state
+          if (apiStats.recentAppointments) {
+            setRecentAppointments(apiStats.recentAppointments.map(apt => ({
+              id: apt.appointmentId || apt._id,
+              patient: apt.patientName || `Patient ${apt.patientId?.slice(-4) || '??'}`,
+              doctor: apt.doctorName || `Dr. ${apt.doctorId?.slice(-4) || '??'}`,
+              specialty: apt.specialty || "General",
+              paymentStatus: apt.paymentStatus || "Paid",
+              appointmentStatus: apt.status || "Confirmed"
+            })));
+          }
+
+          if (apiStats.recentUsers) {
+            setUsers(apiStats.recentUsers.map(u => ({
+              id: u._id,
+              name: u.name || u.email?.split('@')[0] || "Unknown",
+              email: u.email,
+              role: u.role,
+              status: u.status || "active"
+            })));
+          }
+        }
+
+        setError(null);
+      } catch (err) {
+        console.error("Dashboard Fetch Error:", err);
+        setError("Failed to load real-time dashboard data.");
       } finally {
         if (isMounted) setLoading(false);
       }
     };
     checkAuthAndFetch();
     return () => { isMounted = false; };
-  }, [navigate]);
+  }, [navigate, getToken]);
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -114,9 +150,6 @@ export default function AdminOverview() {
       return matchesRole && matchesSearch;
     });
   }, [users, userFilter, searchTerm]);
-
-  const handleApprove = (id) => setPendingDoctors((prev) => prev.filter((doctor) => doctor.id !== id));
-  const handleReject = (id) => setPendingDoctors((prev) => prev.filter((doctor) => doctor.id !== id));
 
   if (loading) {
     return (
@@ -229,37 +262,7 @@ export default function AdminOverview() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-        {/* Verification Queue */}
-        <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="text-blue-600" size={20} />
-              Verification Queue
-            </h2>
-            <StatusBadge label={`${pendingDoctors.length} Pending`} />
-          </div>
-          <div className="space-y-4">
-            {pendingDoctors.length > 0 ? (
-              pendingDoctors.map((doctor) => (
-                <div key={doctor.id} className="rounded-xl border border-slate-100 bg-slate-50 p-4 transition hover:border-blue-100">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <h3 className="font-bold text-slate-900">{doctor.name}</h3>
-                      <p className="text-xs text-slate-500 font-bold uppercase mt-1">{doctor.specialty} • {doctor.experience}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleApprove(doctor.id)} className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700 shadow-sm">Approve</button>
-                      <button onClick={() => handleReject(doctor.id)} className="rounded-lg bg-slate-200 px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-300">Reject</button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-12 text-center text-slate-400 italic text-sm border-2 border-dashed border-slate-100 rounded-xl">No pending requests</div>
-            )}
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-8">
         {/* User Management */}
         <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
