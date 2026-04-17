@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from "@clerk/clerk-react";
 import AdminTable from "../../components/AdminTable";
 import { Users, Search, Mail, Shield, User } from 'lucide-react';
+import { fetchAdminUsers } from "../../services/api";
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -11,27 +11,26 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState("");
   const { getToken } = useAuth();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const token = await getToken();
-      const res = await axios.get("http://localhost:5001/api/auth/users", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = res.data.data || [];
+      const res = await fetchAdminUsers({}, token);
+      const data = res.data.data?.users || res.data.data || [];
       const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setUsers(sorted);
     } catch (err) {
-      setError("Auth service unreachable.");
+      setError("Auth service unreachable. Please ensure the Gateway and Auth services are running.");
+      console.error("Fetch Users Error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
 
   useEffect(() => {
     fetchData();
-  }, [getToken]);
+  }, [fetchData]);
 
   const filteredUsers = users.filter(u => 
     (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())

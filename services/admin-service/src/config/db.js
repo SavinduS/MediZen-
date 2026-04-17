@@ -13,7 +13,7 @@ const connectDB = async () => {
     
     // Switching to target databases on the same MongoDB instance using useDb()
     const authConn = conn.useDb('users', { useCache: true });
-    const patientConn = conn.useDb('patient_db', { useCache: true });
+    const patientConn = conn.useDb('patients', { useCache: true });
     const doctorConn = conn.useDb('doctor_db', { useCache: true });
     const appointmentConn = conn.useDb('appointment_db', { useCache: true });
     const paymentConn = conn.useDb('payment_db', { useCache: true });

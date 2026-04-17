@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from "@clerk/clerk-react";
 import AdminTable from "../../components/AdminTable";
 import { 
@@ -9,6 +8,7 @@ import {
   Plus, Pencil, Trash2, Save
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { fetchAdminDoctors, addDoctor, updateDoctor, deleteDoctor } from "../../services/api";
 
 export default function AdminDoctors() {
   const [doctors, setDoctors] = useState([]);
@@ -33,27 +33,26 @@ export default function AdminDoctors() {
     bio: ""
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const token = await getToken();
-      const res = await axios.get("http://localhost:5003/api/doctors/admin/all", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = res.data.data || [];
+      const res = await fetchAdminDoctors({}, token);
+      const data = res.data.data?.users || res.data.data || [];
       const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setDoctors(sorted);
     } catch (err) {
       setError("Doctor service unreachable.");
+      console.error("Fetch Doctors Error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
 
   useEffect(() => {
     fetchData();
-  }, [getToken]);
+  }, [fetchData]);
 
   const filteredDoctors = useMemo(() => {
     return doctors.filter(d => {
@@ -88,13 +87,12 @@ export default function AdminDoctors() {
     if (!window.confirm("Are you sure you want to delete this doctor?")) return;
     try {
       const token = await getToken();
-      await axios.delete(`http://localhost:5003/api/doctors/admin/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await deleteDoctor(id, token);
       toast.success("Doctor deleted successfully");
       fetchData();
     } catch (err) {
       toast.error("Deletion failed");
+      console.error("Delete Doctor Error:", err);
     }
   };
 
@@ -104,25 +102,21 @@ export default function AdminDoctors() {
     try {
       const token = await getToken();
       if (isEditing) {
-        await axios.put(`http://localhost:5003/api/doctors/admin/${formData._id}`,
-          formData,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await updateDoctor(formData._id, formData, token);
         toast.success("Doctor updated successfully");
       } else {
         // Only send email and password if present
         const payload = { ...formData };
         if (!payload.email) delete payload.email;
         if (!payload.password) delete payload.password;
-        await axios.post("http://localhost:5003/api/doctors/admin/add", payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await addDoctor(payload, token);
         toast.success("Doctor added successfully");
       }
       setShowModal(false);
       fetchData();
     } catch (err) {
       toast.error(isEditing ? "Update failed" : "Addition failed");
+      console.error("Doctor Submit Error:", err);
     } finally {
       setSubmitting(false);
     }

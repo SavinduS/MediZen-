@@ -18,6 +18,7 @@ import {
 import { syncUser } from "./services/api";
 
 // Pages
+import LandingPage from "./pages/LandingPage";
 import DoctorListing from "./pages/DoctorListing";
 import MyAppointments from "./pages/MyAppointments";
 import LoginPage from "./pages/LoginPage";
@@ -30,6 +31,7 @@ import PatientReportViewer from "./pages/PatientReportViewer";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
+import MyPrescriptions from "./pages/MyPrescriptions";
 import SymptomChecker from "./pages/SymptomChecker";
 import PaymentCheckout from "./pages/PaymentCheckout.jsx";
 import PaymentStatus from "./pages/PaymentStatus";
@@ -184,11 +186,35 @@ function AppContent() {
 
                 {role === "patient" && (
                   <>
-                    <Link
-                      to="/"
+                    <Link to="/" className="hover:text-blue-400 transition text-slate-300">
+                      Home
+                    </Link>
+                    <Link to="/doctors" className="hover:text-blue-400 transition text-slate-300">
+                      Find a Doctor
+                    </Link>
+                    <button 
+                      onClick={() => { navigate('/'); setTimeout(() => document.getElementById('about')?.scrollIntoView({behavior:'smooth'}), 100); }}
                       className="hover:text-blue-400 transition text-slate-300"
                     >
-                      Doctors
+                      About
+                    </button>
+                    <button 
+                      onClick={() => { navigate('/'); setTimeout(() => document.getElementById('faqs')?.scrollIntoView({behavior:'smooth'}), 100); }}
+                      className="hover:text-blue-400 transition text-slate-300"
+                    >
+                      FAQs
+                    </button>
+                    <button 
+                      onClick={() => { navigate('/'); setTimeout(() => document.getElementById('contact')?.scrollIntoView({behavior:'smooth'}), 100); }}
+                      className="hover:text-blue-400 transition text-slate-300"
+                    >
+                      Support
+                    </button>
+                    <Link
+                      to="/profile"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Profile
                     </Link>
                     <Link
                       to="/my-appointments"
@@ -197,10 +223,10 @@ function AppContent() {
                       My Appointments
                     </Link>
                     <Link
-                      to="/reports"
+                      to="/my-prescriptions"
                       className="hover:text-blue-400 transition text-blue-100"
                     >
-                      Medical Reports
+                      My Prescriptions
                     </Link>
                     <Link
                       to="/symptoms"
@@ -208,15 +234,26 @@ function AppContent() {
                     >
                       AI Symptom Bot
                     </Link>
-                    <Link
-                      to="/profile"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      Profile
-                    </Link>
                   </>
                 )}
               </SignedIn>
+
+              <SignedOut>
+                <Link to="/" className="hover:text-blue-400 transition text-slate-300">Home</Link>
+                <Link to="/doctors" className="hover:text-blue-400 transition text-slate-300">Doctors</Link>
+                <button 
+                  onClick={() => { navigate('/'); setTimeout(() => document.getElementById('about')?.scrollIntoView({behavior:'smooth'}), 100); }}
+                  className="hover:text-blue-400 transition text-slate-300"
+                >
+                  About
+                </button>
+                <button 
+                  onClick={() => { navigate('/'); setTimeout(() => document.getElementById('contact')?.scrollIntoView({behavior:'smooth'}), 100); }}
+                  className="hover:text-blue-400 transition text-slate-300"
+                >
+                  Support
+                </button>
+              </SignedOut>
             </nav>
 
             <SignedOut>
@@ -243,11 +280,12 @@ function AppContent() {
       </header>
 
       <main
-        className={`${location.pathname.startsWith("/admin") ? "w-full flex-grow" : "container mx-auto px-6 py-8 flex-grow"}`}
+        className={`${location.pathname.startsWith("/admin") || location.pathname === "/" ? "w-full flex-grow" : "container mx-auto px-6 py-8 flex-grow"}`}
       >
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<DoctorListing />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/doctors" element={<DoctorListing />} />
           <Route path="/login/*" element={<LoginPage />} />
           <Route path="/register/*" element={<SignupPage />} />
 
@@ -307,6 +345,21 @@ function AppContent() {
                   loading={loadingRole}
                 >
                   <MyAppointments />
+                </ProtectedRoute>
+              </SignedIn>
+            }
+          />
+
+          <Route
+            path="/my-prescriptions"
+            element={
+              <SignedIn>
+                <ProtectedRoute
+                  allowedRole="patient"
+                  currentRole={role}
+                  loading={loadingRole}
+                >
+                  <MyPrescriptions />
                 </ProtectedRoute>
               </SignedIn>
             }

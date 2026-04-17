@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
-import axios from "axios";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -9,6 +8,7 @@ import {
   Download, Calendar, ChevronRight, X, Search, FileText, Loader2
 } from "lucide-react";
 import toast, { Toaster } from 'react-hot-toast';
+import { fetchAdminPayments } from "../../services/api";
 
 export default function AdminPayments() {
   const [payments, setPayments] = useState([]);
@@ -20,28 +20,27 @@ export default function AdminPayments() {
   const [reporting, setReporting] = useState(false);
   const { getToken } = useAuth();
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const token = await getToken();
-      const res = await axios.get("http://localhost:5007/api/payments", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetchAdminPayments({}, token);
       // Sorting: Latest first (LIFO)
-      const data = res.data.data || [];
+      const data = res.data.data?.payments || res.data.data || [];
       const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setPayments(sorted);
     } catch (err) {
       setError("Payment service unreachable.");
+      console.error("Fetch Payments Error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
 
   useEffect(() => {
     fetchData();
-  }, [getToken]);
+  }, [fetchData]);
 
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
