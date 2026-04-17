@@ -34,6 +34,9 @@ import PaymentCheckout from "./pages/PaymentCheckout.jsx";
 import PaymentStatus from "./pages/PaymentStatus";
 import ReceiptPage from "./pages/ReceiptPage";
 
+// Components
+import Footer from "./components/Footer";
+
 // Admin Layout & Pages
 import AdminLayout from "./components/layouts/AdminLayout";
 import AdminOverview from "./pages/admin/AdminOverview";
@@ -405,9 +408,10 @@ function AppContent() {
         </Routes>
       </main>
 
-      <footer className="py-8 bg-white border-t border-slate-200 text-center text-slate-500 text-sm">
-        &copy; 2026 MediZen Healthcare
-      </footer>
+      {/* Conditionally render Footer: Hide on Admin and Auth pages */}
+      {!location.pathname.startsWith("/admin") &&
+        !location.pathname.startsWith("/login") &&
+        !location.pathname.startsWith("/register") && <Footer />}
     </div>
   );
 }
