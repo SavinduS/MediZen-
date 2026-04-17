@@ -236,6 +236,52 @@ const getAllUsers = async (req, res, next) => {
         return getDoctors(req, res, next);
     }
 
+    // 1. Try to fetch from Auth Service via HTTP first (Microservices approach)
+    // This solves issues when databases are on different MongoDB instances
+    const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:5001';
+    // Ensure we don't have double slashes and point to the correct endpoint
+    const baseUrl = AUTH_SERVICE_URL.replace(/\/$/, '');
+    const targetUrl = baseUrl.includes('/api/auth') ? `${baseUrl}/users` : `${baseUrl}/api/auth/users`;
+    
+    console.log(`[Admin] Fetching users from Auth Service: ${targetUrl}`);
+    
+    try {
+        const response = await axios.get(targetUrl);
+        if (response.data && (response.data.success || response.data.status === 'success')) {
+            let users = response.data.data;
+            if (users && users.users) users = users.users; // Handle nested users object if present
+
+            console.log(`[Admin] Received ${users?.length || 0} users from Auth Service`);
+
+            if (Array.isArray(users)) {
+                // Apply local filtering for name and email search
+                if (search) {
+                    const regex = new RegExp(search, 'i');
+                    users = users.filter(u => 
+                        (u.name && regex.test(u.name)) || 
+                        (u.email && regex.test(u.email))
+                    );
+                }
+
+                const total = users.length;
+                const { skip, limit: l, page: p } = getPagination(page, limit);
+                const paginatedUsers = users.slice(skip, skip + l);
+
+                return successResponse(res, {
+                    users: paginatedUsers.map(u => ({
+                        ...u,
+                        role: u.role || 'patient',
+                        status: u.status || 'active'
+                    })),
+                    pagination: { total, page: p, pages: Math.ceil(total / l) }
+                });
+            }
+        }
+    } catch (httpError) {
+        console.warn(` [Admin Service] Auth Service HTTP call failed, falling back to direct DB: ${httpError.message}`);
+    }
+
+    // 2. Fallback to direct DB access if HTTP fails or returns unexpected format
     if (!User) {
         console.warn(' [Admin Service] User model not available for getAllUsers');
         return successResponse(res, { users: [], pagination: { total: 0, page: 1, pages: 0 } });
@@ -255,7 +301,7 @@ const getAllUsers = async (req, res, next) => {
 
     const { skip, limit: l, page: p } = getPagination(page, limit);
     
-    console.log(`[Admin] Querying users with filter: ${JSON.stringify(filter)}`);
+    console.log(`[Admin] Querying users from DB with filter: ${JSON.stringify(filter)}`);
 
     const [users, total] = await Promise.all([
       User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(l).lean().catch(e => {
@@ -446,12 +492,14 @@ const getStats = async (req, res, next) => {
     const conn = mongoose.connection;
     
     // Switch to target databases
-    // Note: patient-service uses 'patients' as dbName in its connection
+    // Note: auth-service uses 'users' as dbName
+    // Note: patient-service uses 'patients' in its index.js
     const authDb = conn.useDb('users', { useCache: true });
     const patientDb = conn.useDb('patients', { useCache: true }); 
     const doctorDb = conn.useDb('doctor_db', { useCache: true });
     const appointmentDb = conn.useDb('appointment_db', { useCache: true });
     const paymentDb = conn.useDb('payment_db', { useCache: true });
+
 
     // Debugging: List collections to verify visibility
     const listCollections = async (db, name) => {
@@ -499,7 +547,7 @@ const getStats = async (req, res, next) => {
       PatientM.countDocuments().then(c => {
           stats.totalPatients = c;
           console.log(`[Stats Check] Patients Found: ${c}`);
-      }).catch(e => console.error('Error [patient_db]:', e.message)),
+      }).catch(e => console.error('Error [patients]:', e.message)),
 
       // 3. Appointment Stats
       AppointmentM.countDocuments().then(c => {
@@ -507,7 +555,22 @@ const getStats = async (req, res, next) => {
           console.log(`[Stats Check] Appointments Found: ${c}`);
       }).catch(e => console.error('Error [appointment_db]:', e.message)),
       
-      AppointmentM.find().sort({ createdAt: -1 }).limit(5).lean().then(apts => stats.recentAppointments = apts).catch(() => []),
+      AppointmentM.find().sort({ createdAt: -1 }).limit(5).lean().then(async (apts) => {
+          // Enrich appointments with patient and doctor names
+          const enriched = await Promise.all(apts.map(async (apt) => {
+              const [patient, doctor] = await Promise.all([
+                  PatientM.findOne({ _id: apt.patientId }).lean().catch(() => null),
+                  DoctorM.findOne({ _id: apt.doctorId }).lean().catch(() => null)
+              ]);
+              return {
+                  ...apt,
+                  patientName: patient?.name || 'Unknown Patient',
+                  doctorName: doctor?.name || 'Unknown Doctor',
+                  specialty: doctor?.specialization || 'General'
+              };
+          }));
+          stats.recentAppointments = enriched;
+      }).catch(() => []),
 
       // 4. Payment Stats
       PaymentM.countDocuments().then(c => {

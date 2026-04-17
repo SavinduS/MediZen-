@@ -1,34 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import {
-  Users, UserCog, CalendarDays, CreditCard, Wallet, ShieldCheck, Activity, FileText, UserPlus, Search, Loader2
+  Users, UserCog, CalendarDays, CreditCard, Wallet, ShieldCheck, Activity, Search, Loader2, AlertCircle, RefreshCw
 } from "lucide-react";
-import axios from "axios";
+import { fetchAdminStats } from "../../services/api";
 
-// Demo/statics for UI (replace with API data as needed)
-const statsDemo = [
-  { title: "Total Patients", value: "1,284", change: "+12.4%", icon: Users },
-  { title: "Total Doctors", value: "86", change: "+4.1%", icon: UserCog },
-  { title: "Total Appointments", value: "342", change: "+18.2%", icon: CalendarDays },
-  { title: "Total Payments", value: "297", change: "+9.7%", icon: CreditCard },
-  { title: "Revenue", value: "LKR 428,500", change: "+14.3%", icon: Wallet },
-  { title: "Pending Verifications", value: "11", change: "Needs review", icon: ShieldCheck },
-];
-const recentAppointmentsDemo = [
-  { id: "APT-1001", patient: "Nethmi Perera", doctor: "Dr. A. Fernando", specialty: "Cardiology", paymentStatus: "Paid", appointmentStatus: "Confirmed" },
-  { id: "APT-1002", patient: "Kavindu Silva", doctor: "Dr. S. Jayawardena", specialty: "Dermatology", paymentStatus: "Pending", appointmentStatus: "Pending" },
-  { id: "APT-1003", patient: "Dulani Wickramasinghe", doctor: "Dr. M. Peris", specialty: "Neurology", paymentStatus: "Paid", appointmentStatus: "Completed" },
-];
-const pendingDoctorsInitial = [
-  { id: "DOC-201", name: "Dr. Ishara Senanayake", specialty: "Orthopedics", email: "ishara@medizen.com", experience: "7 years" },
-  { id: "DOC-202", name: "Dr. Shenal Perera", specialty: "ENT", email: "shenal@medizen.com", experience: "5 years" },
-];
-const usersDemo = [
-  { id: "USR-1", name: "Nethmi Perera", email: "nethmi@gmail.com", role: "patient", status: "active" },
-  { id: "USR-2", name: "Dr. A. Fernando", email: "afernando@medizen.com", role: "doctor", status: "active" },
-  { id: "USR-3", name: "Admin Sahan", email: "admin@medizen.com", role: "admin", status: "active" },
-];
 const badgeClasses = {
   Paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
   Pending: "bg-amber-100 text-amber-700 border-amber-200",
@@ -43,9 +20,11 @@ const badgeClasses = {
   doctor: "bg-violet-100 text-violet-700 border-violet-200",
   admin: "bg-slate-200 text-slate-700 border-slate-300",
 };
+
 const StatusBadge = ({ label }) => (
   <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeClasses[label] || "bg-slate-100 text-slate-700 border-slate-200"}`}>{label}</span>
 );
+
 const StatCard = ({ title, value, change, icon: Icon }) => (
   <div className="rounded-2xl bg-white p-5 shadow-sm border border-slate-200 transition hover:shadow-md hover:border-blue-200 group">
     <div className="flex items-start justify-between">
@@ -61,95 +40,121 @@ const StatCard = ({ title, value, change, icon: Icon }) => (
   </div>
 );
 
+const MOCK_DATA = {
+  totalPatients: 7,
+  totalDoctors: 6,
+  totalAppointments: 10,
+  totalPayments: 0,
+  totalRevenue: 0,
+  pendingDoctorsCount: 2,
+  recentAppointments: [
+    { id: "APT-1001", patientName: "Nethmi Perera", doctorName: "Dr. A. Fernando", specialty: "Cardiology", paymentStatus: "Paid", status: "COMPLETED" },
+    { id: "APT-1002", patientName: "Kavindu Silva", doctorName: "Dr. S. Jayawardena", specialty: "Dermatology", paymentStatus: "Pending", status: "PENDING" },
+    { id: "APT-1003", patientName: "Dulani Wickramasinghe", doctorName: "Dr. M. Peris", specialty: "Neurology", paymentStatus: "Paid", status: "CONFIRMED" },
+    { id: "APT-1004", patientName: "Sahan Bandara", doctorName: "Dr. K. Silva", specialty: "Pediatrics", paymentStatus: "Paid", status: "COMPLETED" },
+    { id: "APT-1005", patientName: "Ishara Senanayake", doctorName: "Dr. R. Perera", specialty: "General", paymentStatus: "Pending", status: "CANCELLED" },
+    { id: "APT-1006", patientName: "Chamara Herath", doctorName: "Dr. A. Fernando", specialty: "Cardiology", paymentStatus: "Paid", status: "CONFIRMED" },
+    { id: "APT-1007", patientName: "Nirosha Dilrukshi", doctorName: "Dr. S. Jayawardena", specialty: "Dermatology", paymentStatus: "Paid", status: "COMPLETED" },
+    { id: "APT-1008", patientName: "Pathum Nissanka", doctorName: "Dr. M. Peris", specialty: "Neurology", paymentStatus: "Pending", status: "PENDING" },
+    { id: "APT-1009", patientName: "Kusal Mendis", doctorName: "Dr. K. Silva", specialty: "Pediatrics", paymentStatus: "Paid", status: "CONFIRMED" },
+    { id: "APT-1010", patientName: "Wanindu Hasaranga", doctorName: "Dr. R. Perera", specialty: "General", paymentStatus: "Paid", status: "COMPLETED" },
+  ],
+  recentUsers: [
+    { _id: "U1", name: "Nethmi Perera", email: "nethmi@gmail.com", role: "patient", status: "active" },
+    { _id: "U2", name: "Dr. A. Fernando", email: "afernando@medizen.com", role: "doctor", status: "active" },
+    { _id: "U3", name: "Kavindu Silva", email: "kavindu@gmail.com", role: "patient", status: "active" },
+    { _id: "U4", name: "Dulani Wickramasinghe", email: "dulani@gmail.com", role: "patient", status: "active" },
+    { _id: "U5", name: "Dr. S. Jayawardena", email: "sjayawardena@medizen.com", role: "doctor", status: "active" },
+    { _id: "U6", name: "Sahan Bandara", email: "sahan@gmail.com", role: "patient", status: "active" },
+    { _id: "U7", name: "Ishara Senanayake", email: "ishara@gmail.com", role: "patient", status: "active" },
+  ],
+  recentActivity: [
+    { action: "New patient registered", timestamp: new Date(), targetId: "U7" },
+    { action: "Appointment confirmed", timestamp: new Date(), targetId: "APT-1003" },
+    { action: "Doctor profile updated", timestamp: new Date(), targetId: "U2" },
+    { action: "Prescription issued", timestamp: new Date(), targetId: "APT-1001" },
+    { action: "New verification request", timestamp: new Date(), targetId: "D201" },
+  ]
+};
+
 export default function AdminOverview() {
   const [stats, setStats] = useState([]);
   const [recentAppointments, setRecentAppointments] = useState([]);
   const [users, setUsers] = useState([]);
   const [userFilter, setUserFilter] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const navigate = useNavigate();
   const { getToken } = useAuth();
 
-  // Auth check and dashboard data fetch
-  useEffect(() => {
-    let isMounted = true;
-    const checkAuthAndFetch = async () => {
-      try {
-        const token = await getToken();
-        if (!token) {
-          setError("Session expired. Please refresh.");
-          setLoading(false);
-          return;
-        }
-        
-        // Fetch real dashboard stats from Admin Service
-        const res = await axios.get("http://localhost:5009/api/admin/stats", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        
-        if (!isMounted) return;
-
-        if (res.data && res.data.data) {
-          const apiStats = res.data.data;
-          
-          // Map API data to our stats structure for the UI
-          const updatedStats = [
-            { title: "Total Patients", value: apiStats.totalPatients?.toLocaleString() || "0", change: "Real-time", icon: Users },
-            { title: "Total Doctors", value: apiStats.totalDoctors?.toLocaleString() || "0", change: `${apiStats.pendingDoctorsCount || 0} pending`, icon: UserCog },
-            { title: "Total Appointments", value: apiStats.totalAppointments?.toLocaleString() || "0", change: "Across platform", icon: CalendarDays },
-            { title: "Total Transactions", value: apiStats.totalPayments?.toLocaleString() || "0", change: "Processed", icon: CreditCard },
-            { title: "Revenue", value: `LKR ${apiStats.totalRevenue?.toLocaleString() || "0"}`, change: "Completed", icon: Wallet },
-            { title: "Pending Verifications", value: apiStats.pendingDoctorsCount?.toString() || "0", change: "Needs review", icon: ShieldCheck },
-          ];
-          
-          setStats(updatedStats);
-
-          // Map real lists from DB to state
-          if (apiStats.recentAppointments) {
-            setRecentAppointments(apiStats.recentAppointments.map(apt => ({
-              id: apt.appointmentId || apt._id,
-              patient: apt.patientName || `Patient ${apt.patientId?.slice(-4) || '??'}`,
-              doctor: apt.doctorName || `Dr. ${apt.doctorId?.slice(-4) || '??'}`,
-              specialty: apt.specialty || "General",
-              paymentStatus: apt.paymentStatus || "Paid",
-              appointmentStatus: apt.status || "Confirmed"
-            })));
-          }
-
-          if (apiStats.recentUsers) {
-            setUsers(apiStats.recentUsers.map(u => ({
-              id: u._id,
-              name: u.name || u.email?.split('@')[0] || "Unknown",
-              email: u.email,
-              role: u.role,
-              status: u.status || "active"
-            })));
-          }
-        }
-
-        setError(null);
-      } catch (err) {
-        console.error("Dashboard Fetch Error:", err);
-        setError("Failed to load real-time dashboard data.");
-      } finally {
-        if (isMounted) setLoading(false);
+  const loadDashboardData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setError("Session expired. Please refresh.");
+        setLoading(false);
+        return;
       }
-    };
-    checkAuthAndFetch();
-    return () => { isMounted = false; };
-  }, [navigate, getToken]);
+      
+      const res = await fetchAdminStats(token);
+      let apiStats = (res.data && res.data.data) ? res.data.data : null;
+
+      // Check if real data is empty, if so, use MOCK_DATA
+      const useMock = !apiStats || (apiStats.totalPatients === 0 && apiStats.totalDoctors === 0 && apiStats.totalAppointments === 0);
+      const dataToUse = useMock ? MOCK_DATA : apiStats;
+      
+      console.log(useMock ? "[Admin] Using Mock Data for dashboard" : "[Admin] Using Real API Data");
+
+      const updatedStats = [
+        { title: "Total Patients", value: dataToUse.totalPatients?.toLocaleString() || "0", change: useMock ? "Mock Data" : "Real-time", icon: Users },
+        { title: "Total Doctors", value: dataToUse.totalDoctors?.toLocaleString() || "0", change: `${dataToUse.pendingDoctorsCount || 0} pending`, icon: UserCog },
+        { title: "Total Appointments", value: dataToUse.totalAppointments?.toLocaleString() || "0", change: "Across platform", icon: CalendarDays },
+        { title: "Total Transactions", value: dataToUse.totalPayments?.toLocaleString() || "0", change: "Processed", icon: CreditCard },
+        { title: "Revenue", value: `LKR ${dataToUse.totalRevenue?.toLocaleString() || "0"}`, change: "Completed", icon: Wallet },
+        { title: "Pending Verifications", value: dataToUse.pendingDoctorsCount?.toString() || "0", change: "Needs review", icon: ShieldCheck },
+      ];
+      
+      setStats(updatedStats);
+
+      if (dataToUse.recentAppointments) {
+        setRecentAppointments(dataToUse.recentAppointments.map(apt => ({
+          id: apt.appointmentId || apt.id || apt._id,
+          patient: apt.patientName || `Patient ${apt.patientId?.slice(-4) || '??'}`,
+          doctor: apt.doctorName || `Dr. ${apt.doctorId?.slice(-4) || '??'}`,
+          specialty: apt.specialty || "General",
+          paymentStatus: apt.paymentStatus || "Paid",
+          appointmentStatus: apt.status || "Confirmed"
+        })));
+      }
+
+      if (dataToUse.recentUsers) {
+        setUsers(dataToUse.recentUsers.map(u => ({
+          id: u._id || u.id,
+          name: u.name || u.email?.split('@')[0] || "Unknown",
+          email: u.email,
+          role: u.role,
+          status: u.status || "active"
+        })));
+      }
+    } catch (err) {
+      console.error("Dashboard Fetch Error:", err);
+      setError("Failed to load real-time dashboard data. Please check your connection to the Admin Service.");
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const matchesRole = userFilter === "all" || user.role === userFilter;
-      const matchesSearch =
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesRole && matchesSearch;
+      return matchesRole;
     });
-  }, [users, userFilter, searchTerm]);
+  }, [users, userFilter]);
 
   if (loading) {
     return (
@@ -162,8 +167,19 @@ export default function AdminOverview() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
-        <span className="text-red-600 font-bold tracking-wide">{error}</span>
+      <div className="flex flex-col items-center justify-center h-full min-h-[400px] p-6 text-center">
+        <div className="bg-red-50 p-8 rounded-3xl border border-red-100 max-w-md">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Data Synchronization Failed</h2>
+          <p className="text-slate-500 text-sm mb-6">{error}</p>
+          <button 
+            onClick={loadDashboardData}
+            className="flex items-center gap-2 mx-auto bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg shadow-slate-200"
+          >
+            <RefreshCw size={18} />
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }

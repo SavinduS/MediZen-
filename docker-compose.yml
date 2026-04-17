@@ -1,15 +1,5 @@
 services:
   # Databases & Infrastructure
-  mongo-db:
-    image: mongo:latest
-    container_name: mongo-db
-    ports:
-      - "27018:27017"
-    volumes:
-      - mongo-db-data:/data/db
-    networks:
-      - medizen-network
-
   mongodb:
     image: mongo:latest
     container_name: mongodb
@@ -45,9 +35,9 @@ services:
       - "5001:5001"
     environment:
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - MONGO_URI=mongodb://mongo-db:27017/users
+      - MONGO_URI=mongodb://mongodb:27017/users
     depends_on:
-      - mongo-db
+      - mongodb
     networks:
       - medizen-network
 
@@ -56,9 +46,9 @@ services:
     ports:
       - "5002:5002"
     environment:
-      - MONGO_URI=mongodb://mongo-db:27017/patient_db
+      - MONGO_URI=mongodb://mongodb:27017/patients
     depends_on:
-      - mongo-db
+      - mongodb
     networks:
       - medizen-network
 

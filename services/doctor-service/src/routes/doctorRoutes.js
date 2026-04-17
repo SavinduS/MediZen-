@@ -33,4 +33,7 @@ router.put('/:id/verify', doctorController.verifyDoctor);
 // POST /api/doctors/prescriptions - Doctor issues a prescription
 router.post('/prescriptions', doctorController.issuePrescription);
 
+// GET /api/doctors/prescriptions/patient/:patientId - Patient views their own
+router.get('/prescriptions/patient/:patientId', doctorController.getPrescriptionsByPatientId);
+
 module.exports = router;

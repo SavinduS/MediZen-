@@ -57,6 +57,8 @@ export const updateDoctorProfile = (id, data) => doctorAPI.put(`/${id}`, data);
 export const deleteDoctorProfile = (id) => doctorAPI.delete(`/${id}`);
 export const getDoctorAvailability = (id) => doctorAPI.get(`/${id}/availability`);
 export const updateDoctorAvailability = (id, slots) => doctorAPI.put(`/${id}/availability`, { slots });
+export const issuePrescription = (data) => doctorAPI.post('/prescriptions', data);
+export const fetchPatientPrescriptions = (patientId) => doctorAPI.get(`/prescriptions/patient/${patientId}`);
 
 const doctorSlotsAPI = axios.create({ baseURL: `${GATEWAY_URL}/api/doctors` });
 
@@ -114,6 +116,9 @@ export const verifyDoctor = (id, token) =>
   adminAPI.put(`/doctors/${id}/verify`, {}, { headers: { Authorization: `Bearer ${token}` } });
 
 // --- NOTIFICATION CALLS ---
+export const fetchNotificationLogs = (token) => 
+  notificationAPI.get('/logs', { headers: { Authorization: `Bearer ${token}` } });
+
 export const fetchNotificationPrefs = (userId, token) => 
   notificationAPI.get(`/prefs/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
 
