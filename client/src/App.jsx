@@ -192,24 +192,6 @@ function AppContent() {
                     <Link to="/doctors" className="hover:text-blue-400 transition text-slate-300">
                       Find a Doctor
                     </Link>
-                    <button 
-                      onClick={() => { navigate('/'); setTimeout(() => document.getElementById('about')?.scrollIntoView({behavior:'smooth'}), 100); }}
-                      className="hover:text-blue-400 transition text-slate-300"
-                    >
-                      About
-                    </button>
-                    <button 
-                      onClick={() => { navigate('/'); setTimeout(() => document.getElementById('faqs')?.scrollIntoView({behavior:'smooth'}), 100); }}
-                      className="hover:text-blue-400 transition text-slate-300"
-                    >
-                      FAQs
-                    </button>
-                    <button 
-                      onClick={() => { navigate('/'); setTimeout(() => document.getElementById('contact')?.scrollIntoView({behavior:'smooth'}), 100); }}
-                      className="hover:text-blue-400 transition text-slate-300"
-                    >
-                      Support
-                    </button>
                     <Link
                       to="/profile"
                       className="hover:text-blue-400 transition text-blue-100"
