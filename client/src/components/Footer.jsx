@@ -1,5 +1,6 @@
 import React from "react";
-import { Heart, Github, Mail, Phone } from "lucide-react";
+import { Heart, Mail, Phone } from "lucide-react";
+import { FaGithub } from "react-icons/fa";
 
 const Footer = () => {
   return (
