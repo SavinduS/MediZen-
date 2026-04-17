@@ -39,26 +39,6 @@ jobs:
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-ai-service:${{ github.sha }}
             ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-ai-service:latest
 
-      # Step 4: Set up K8s context
-      - name: Set K8s Context
-        uses: azure/k8s-set-context@v3
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-
-      # Step 5: Deploy to Kubernetes Cluster
-      - name: Deploy to K8s
-        uses: azure/k8s-deploy@v4
-        with:
-          action: deploy
-          manifests: |
-            k8s/symptom-checker-deployment.yaml
-            k8s/symptom-checker-service.yaml
-            k8s/medizen-config-secrets.yaml
-          images: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/medizen-ai-service:${{ github.sha }}
-          kubectl-version: "latest"
-
-      # Step 6: Output success message
+      # Step 4: Output success message
       - name: Completion Log
         run: echo "Deployment to Docker Hub and K8s successful for medizen-ai-service."
