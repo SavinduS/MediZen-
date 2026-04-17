@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from "@clerk/clerk-react";
 import AdminTable from "../../components/AdminTable";
 import { 
   Bell, Mail, Smartphone, Loader2, RefreshCw, MessageSquare, 
   Clock, ShieldCheck
 } from 'lucide-react';
+import { fetchNotificationLogs, fetchNotificationPrefs, updateNotificationPrefs } from "../../services/api";
 
 export default function AdminNotifications() {
   const [logs, setLogs] = useState([]);
@@ -17,15 +17,14 @@ export default function AdminNotifications() {
 
   const userId = "admin_001";
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const token = await getToken();
-      const headers = { Authorization: `Bearer ${token}` };
       const [lRes, pRes] = await Promise.all([
-        axios.get("http://localhost:5008/api/notifications/logs", { headers }),
-        axios.get(`http://localhost:5008/api/notifications/prefs/${userId}`, { headers }).catch(() => ({ data: { data: { emailEnabled: true, smsEnabled: true } } }))
+        fetchNotificationLogs(token),
+        fetchNotificationPrefs(userId, token).catch(() => ({ data: { data: { emailEnabled: true, smsEnabled: true } } }))
       ]);
       // Sorting: Latest first
       const data = lRes.data.data || [];
@@ -34,14 +33,15 @@ export default function AdminNotifications() {
       if (pRes.data?.data) setPrefs(pRes.data.data);
     } catch (err) {
       setError("Notification service unreachable (Port 5008).");
+      console.error("Fetch Notifications Error:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, userId]);
 
   useEffect(() => {
     fetchData();
-  }, [getToken]);
+  }, [fetchData]);
 
   const handleToggle = async (key) => {
     const newPrefs = { ...prefs, [key]: !prefs[key] };
@@ -49,12 +49,9 @@ export default function AdminNotifications() {
     setSaving(true);
     try {
       const token = await getToken();
-      await axios.put("http://localhost:5008/api/notifications/prefs", 
-        { userId, ...newPrefs },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await updateNotificationPrefs({ userId, ...newPrefs }, token);
     } catch (err) {
-      console.error("Failed to update prefs");
+      console.error("Failed to update prefs", err);
     } finally {
       setSaving(false);
     }

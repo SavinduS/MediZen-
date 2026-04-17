@@ -18,6 +18,7 @@ import {
 import { syncUser } from "./services/api";
 
 // Pages
+import LandingPage from "./pages/LandingPage";
 import DoctorListing from "./pages/DoctorListing";
 import MyAppointments from "./pages/MyAppointments";
 import LoginPage from "./pages/LoginPage";
@@ -30,6 +31,7 @@ import PatientReportViewer from "./pages/PatientReportViewer";
 import PrescriptionForm from "./pages/PrescriptionForm";
 import PatientProfile from "./pages/PatientProfile";
 import MedicalReports from "./pages/MedicalReports";
+import MyPrescriptions from "./pages/MyPrescriptions";
 import SymptomChecker from "./pages/SymptomChecker";
 import PaymentCheckout from "./pages/PaymentCheckout.jsx";
 import PaymentStatus from "./pages/PaymentStatus";
@@ -46,7 +48,7 @@ import AdminDoctors from "./pages/admin/AdminDoctors";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 
-// 1. Helper Component to protect routes and wait for the Role to load
+// 1. Helper Component to protect routes
 const ProtectedRoute = ({ children, allowedRole, currentRole, loading }) => {
   if (loading) {
     return (
@@ -85,18 +87,10 @@ function AppContent() {
           const userRole = response.data.role.toLowerCase();
           setRole(userRole);
 
-          // Handle automatic redirection based on role after successful login
-          if (
-            location.pathname === "/login" ||
-            location.pathname === "/register"
-          ) {
-            if (userRole === "admin") {
-              navigate("/admin/dashboard", { replace: true });
-            } else if (userRole === "doctor") {
-              navigate("/doctor-dashboard", { replace: true });
-            } else {
-              navigate("/", { replace: true });
-            }
+          if (location.pathname === "/login" || location.pathname === "/register") {
+            if (userRole === "admin") navigate("/admin/dashboard", { replace: true });
+            else if (userRole === "doctor") navigate("/doctor-dashboard", { replace: true });
+            else navigate("/", { replace: true });
           }
         } catch (error) {
           console.error("Backend Sync Error:", error);
@@ -111,130 +105,67 @@ function AppContent() {
     if (clerkLoaded) syncBackendUser();
   }, [user, clerkLoaded, getToken, navigate, location.pathname]);
 
-  // Handle landing page redirections based on role
+  // Handle landing page redirections
   useEffect(() => {
     if (!loadingRole && role) {
-      // Admin Redirection
-      if (role === "admin") {
-        if (
-          location.pathname === "/" ||
-          location.pathname === "/login" ||
-          location.pathname === "/register"
-        ) {
-          navigate("/admin/dashboard", { replace: true });
-        }
+      if (role === "admin" && ["/", "/login", "/register"].includes(location.pathname)) {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (role === "doctor" && ["/", "/login", "/register"].includes(location.pathname)) {
+        navigate("/doctor-dashboard", { replace: true });
       }
-      // Doctor Redirection
-      else if (role === "doctor") {
-        if (
-          location.pathname === "/" ||
-          location.pathname === "/login" ||
-          location.pathname === "/register"
-        ) {
-          navigate("/doctor-dashboard", { replace: true });
-        }
-      }
-
-      // Safety: Prevent non-admins from hitting admin routes
       if (role !== "admin" && location.pathname.startsWith("/admin")) {
         navigate("/", { replace: true });
       }
     }
   }, [role, loadingRole, location.pathname, navigate]);
 
+  // --- Footer Visibility Logic ---
+  const hideFooterRoutes = ["/login", "/register", "/admin", "/doctor-dashboard", "/video"];
+  const shouldHideFooter = hideFooterRoutes.some(path => location.pathname.startsWith(path));
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       <header className="bg-slate-900 text-white shadow-lg sticky top-0 z-50 border-b border-slate-800">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <Link
-            to="/"
-            className="text-2xl font-bold tracking-tight text-blue-400"
-          >
+          <Link to="/" className="text-2xl font-bold tracking-tight text-blue-400">
             MediZen <span className="text-white">Healthcare</span>
           </Link>
 
           <div className="flex items-center gap-6">
-            <nav className="space-x-8 hidden md:flex font-medium items-center">
+            <nav className="space-x-8 hidden md:flex font-medium items-center text-sm">
               <SignedIn>
                 {role === "admin" && (
-                  <Link
-                    to="/admin/dashboard"
-                    className="hover:text-blue-400 transition text-blue-100"
-                  >
-                    Admin Panel
-                  </Link>
+                   <Link to="/admin/dashboard" className="hover:text-blue-400 transition text-blue-100">Admin Panel</Link>
                 )}
-
                 {role === "doctor" && (
                   <>
-                    <Link
-                      to="/doctor-dashboard"
-                      className="hover:text-blue-400 transition text-slate-300"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      to="/doctor-settings"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      Profile
-                    </Link>
+                    <Link to="/doctor-dashboard" className="hover:text-blue-400 transition text-slate-300">Dashboard</Link>
+                    <Link to="/doctor-settings" className="hover:text-blue-400 transition text-blue-100">Profile</Link>
                   </>
                 )}
-
                 {role === "patient" && (
                   <>
-                    <Link
-                      to="/"
-                      className="hover:text-blue-400 transition text-slate-300"
-                    >
-                      Doctors
-                    </Link>
-                    <Link
-                      to="/my-appointments"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      My Appointments
-                    </Link>
-                    <Link
-                      to="/reports"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      Medical Reports
-                    </Link>
-                    <Link
-                      to="/symptoms"
-                      className="hover:text-blue-400 transition text-blue-100 font-bold"
-                    >
-                      AI Symptom Bot
-                    </Link>
-                    <Link
-                      to="/profile"
-                      className="hover:text-blue-400 transition text-blue-100"
-                    >
-                      Profile
-                    </Link>
+                    <Link to="/" className="hover:text-blue-400 transition text-slate-300">Home</Link>
+                    <Link to="/doctors" className="hover:text-blue-400 transition text-slate-300">Doctors</Link>
+                    <Link to="/my-appointments" className="hover:text-blue-400 transition text-blue-100">Appointments</Link>
+                    <Link to="/my-prescriptions" className="hover:text-blue-400 transition text-blue-100">Prescriptions</Link>
+                    <Link to="/symptoms" className="hover:text-blue-400 transition text-blue-100 font-bold">AI Bot</Link>
                   </>
                 )}
               </SignedIn>
+              <SignedOut>
+                <Link to="/" className="hover:text-blue-400 transition text-slate-300">Home</Link>
+                <Link to="/doctors" className="hover:text-blue-400 transition text-slate-300">Find Doctors</Link>
+              </SignedOut>
             </nav>
 
             <SignedOut>
-              <Link
-                to="/login"
-                className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-full font-bold transition shadow-md"
-              >
-                Login
-              </Link>
+              <Link to="/login" className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-full font-bold transition">Login</Link>
             </SignedOut>
 
             <SignedIn>
               <div className="flex items-center gap-3">
-                {!loadingRole && (
-                  <span className="text-[10px] bg-slate-800 px-2 py-1 rounded uppercase font-bold text-blue-400 border border-slate-700">
-                    {role}
-                  </span>
-                )}
+                {!loadingRole && <span className="text-[10px] bg-slate-800 px-2 py-1 rounded uppercase font-bold text-blue-400 border border-slate-700">{role}</span>}
                 <UserButton afterSignOutUrl="/" />
               </div>
             </SignedIn>
@@ -242,198 +173,43 @@ function AppContent() {
         </div>
       </header>
 
-      <main
-        className={`${location.pathname.startsWith("/admin") ? "w-full flex-grow" : "container mx-auto px-6 py-8 flex-grow"}`}
-      >
+      <main className={`${location.pathname.startsWith("/admin") || location.pathname === "/" ? "w-full flex-grow" : "container mx-auto px-6 py-8 flex-grow"}`}>
         <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<DoctorListing />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/doctors" element={<DoctorListing />} />
           <Route path="/login/*" element={<LoginPage />} />
           <Route path="/register/*" element={<SignupPage />} />
 
-          {/* Protected Routes */}
-          <Route
-            path="/profile"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="patient"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <PatientProfile />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
+          {/* Patient */}
+          <Route path="/profile" element={<SignedIn><ProtectedRoute allowedRole="patient" currentRole={role} loading={loadingRole}><PatientProfile /></ProtectedRoute></SignedIn>} />
+          <Route path="/my-appointments" element={<SignedIn><ProtectedRoute allowedRole="patient" currentRole={role} loading={loadingRole}><MyAppointments /></ProtectedRoute></SignedIn>} />
+          <Route path="/my-prescriptions" element={<SignedIn><ProtectedRoute allowedRole="patient" currentRole={role} loading={loadingRole}><MyPrescriptions /></ProtectedRoute></SignedIn>} />
+          <Route path="/symptoms" element={<SignedIn><ProtectedRoute allowedRole="patient" currentRole={role} loading={loadingRole}><SymptomChecker /></ProtectedRoute></SignedIn>} />
 
-          <Route
-            path="/reports"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="patient"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <MedicalReports />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/symptoms"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="patient"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <SymptomChecker />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/my-appointments"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="patient"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <MyAppointments />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          {/* Payment Routes */}
-          <Route path="/checkout" element={<PaymentCheckout />} />
-          <Route path="/payment-status" element={<PaymentStatus />} />
-          <Route path="/receipt" element={<ReceiptPage />} />
-
-          {/* Nested Admin Routes */}
-          <Route
-            path="/admin"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="admin"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <AdminLayout />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          >
+          {/* Admin */}
+          <Route path="/admin" element={<SignedIn><ProtectedRoute allowedRole="admin" currentRole={role} loading={loadingRole}><AdminLayout /></ProtectedRoute></SignedIn>}>
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminOverview />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="doctors" element={<AdminDoctors />} />
             <Route path="payments" element={<AdminPayments />} />
-            <Route path="notifications" element={<AdminNotifications />} />
           </Route>
 
-          <Route
-            path="/issue-prescription"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="doctor"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <PrescriptionForm />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
+          {/* Doctor */}
+          <Route path="/doctor-dashboard" element={<SignedIn><ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}><DoctorDashboard /></ProtectedRoute></SignedIn>} />
+          <Route path="/availability" element={<SignedIn><ProtectedRoute allowedRole="doctor" currentRole={role} loading={loadingRole}><AvailabilityManager /></ProtectedRoute></SignedIn>} />
+          <Route path="/issue-prescription" element={<PrescriptionForm />} />
 
-          <Route
-            path="/doctor-dashboard"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="doctor"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <DoctorDashboard />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/doctor-settings"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="doctor"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <DoctorSettings />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/availability"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="doctor"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <AvailabilityManager />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          <Route
-            path="/patient-reports/:patientId"
-            element={
-              <SignedIn>
-                <ProtectedRoute
-                  allowedRole="doctor"
-                  currentRole={role}
-                  loading={loadingRole}
-                >
-                  <PatientReportViewer />
-                </ProtectedRoute>
-              </SignedIn>
-            }
-          />
-
-          {/* Video Consultation Room (Shared - Accessible by both signed-in Doctor/Patient) */}
-          <Route
-            path="/video"
-            element={
-              <SignedIn>
-                <VideoRoom />
-              </SignedIn>
-            }
-          />
-
-          {/* Fallback */}
+          {/* Video & Payments */}
+          <Route path="/video" element={<SignedIn><VideoRoom /></SignedIn>} />
+          <Route path="/checkout" element={<PaymentCheckout />} />
+          <Route path="/payment-status" element={<PaymentStatus />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
-      {/* Conditionally render Footer: Hide on Admin and Auth pages */}
-      {!location.pathname.startsWith("/admin") &&
-        !location.pathname.startsWith("/login") &&
-        !location.pathname.startsWith("/register") && <Footer />}
+      {!shouldHideFooter && <Footer />}
     </div>
   );
 }
