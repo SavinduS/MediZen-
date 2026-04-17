@@ -75,7 +75,7 @@ const Footer = () => {
                 href="#"
                 className="bg-slate-800 p-2 rounded-full hover:bg-blue-600 hover:text-white transition-all"
               >
-                <Github size={18} />
+                <FaGithub size={18} />
               </a>
             </div>
           </div>
