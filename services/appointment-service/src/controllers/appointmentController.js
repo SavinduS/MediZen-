@@ -182,16 +182,22 @@ exports.getAvailableSlots = async (req, res) => {
 
         // 6. Generate slots
         let freeSlots = [];
+        const now = new Date();
+
         daySlots.forEach(avail => {
             let current = new Date(`${date}T${avail.startTime}:00`);
             const end = new Date(`${date}T${avail.endTime}:00`);
 
             while (current < end) {
+                // Check 1: Is it in the past? (Only matters if date is today)
+                const isPast = current < now;
+
+                // Check 2: Is it already booked?
                 const isBooked = existingAppointments.some(app => 
                     new Date(app.slotTime).getTime() === current.getTime()
                 );
 
-                if (!isBooked) {
+                if (!isBooked && !isPast) {
                     freeSlots.push(new Date(current).toISOString());
                 }
                 current.setHours(current.getHours() + 1);
