@@ -122,3 +122,4 @@ export const updateNotificationPrefs = (data, token) =>
 
 // --- SYMPTOM CHECKER CALLS (PORT 5005) ---
 export const checkSymptoms = (data) => symptomAPI.post('/', data);
+export const fetchSymptomHistory = (clerkId) => symptomAPI.get(`/history/${clerkId}`);
