@@ -16,11 +16,19 @@ const userSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+const doctorSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    specialization: { type: String, required: true },
+    verified: { type: Boolean, default: false },
+    fee: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now }
+});
+
 const paymentSchema = new mongoose.Schema({
     amount: { type: Number, required: true },
     status: { type: String, default: 'pending' },
-    patientName: String,
-    email: String,
+    patientId: String,
+    paymentId: String,
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -37,7 +45,7 @@ const appointmentSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-let Payment, Patient, User, Appointment;
+let Payment, Patient, User, Appointment, Doctor;
 
 // Internal Service URL Handling
 let DOCTOR_SERVICE_URL = process.env.DOCTOR_SERVICE_URL || 'http://localhost:5003';
@@ -49,10 +57,11 @@ DOCTOR_SERVICE_URL = DOCTOR_SERVICE_URL.replace(/\/$/, '');
  */
 const initModels = (connections) => {
   try {
-    Payment = connections.paymentConn.models.Payment || connections.paymentConn.model('Payment', paymentSchema);
-    Patient = connections.patientConn.models.Patient || connections.patientConn.model('Patient', patientSchema);
-    Appointment = connections.appointmentConn.models.Appointment || connections.appointmentConn.model('Appointment', appointmentSchema);
-    User = connections.authConn.models.User || connections.authConn.model('User', userSchema);
+    Payment = connections.paymentConn.model('Payment', paymentSchema);
+    Patient = connections.patientConn.model('Patient', patientSchema);
+    Appointment = connections.appointmentConn.model('Appointment', appointmentSchema);
+    User = connections.authConn.model('User', userSchema);
+    Doctor = connections.doctorConn.model('Doctor', doctorSchema);
     
     console.log(' [Admin Service] Cross-service models initialized');
   } catch (err) {
@@ -412,45 +421,127 @@ const getStats = async (req, res, next) => {
   try {
     const stats = {
         totalDoctors: 0,
-        pendingDoctors: 0,
+        pendingDoctorsCount: 0,
         totalPatients: 0,
         totalAppointments: 0,
         totalPayments: 0,
         totalRevenue: 0,
-        recentActivity: []
+        recentActivity: [],
+        recentAppointments: [],
+        pendingDoctors: [],
+        recentUsers: []
     };
 
-    const promises = [];
-
-    // Orchestrate Doctor stats via HTTP
-    promises.push(axios.get(`${DOCTOR_SERVICE_URL}/api/doctors`).then(res => {
-        const doctors = Array.isArray(res.data) ? res.data : [];
-        stats.totalDoctors = doctors.length;
-        stats.pendingDoctors = doctors.filter(d => !d.verified).length;
-    }).catch(e => console.warn('[Admin] Stats: Doctor Service unreachable', e.message)));
+    console.log('------------------------------------------------');
+    console.log('[Admin Stats] Aggregating data across microservice databases...');
     
-    if (Patient) promises.push(Patient.countDocuments().then(c => stats.totalPatients = c).catch(() => 0));
-    if (Appointment) promises.push(Appointment.countDocuments().then(c => stats.totalAppointments = c).catch(() => 0));
-    if (Payment) {
-        promises.push(Payment.countDocuments().then(c => stats.totalPayments = c).catch(() => 0));
-        promises.push(Payment.aggregate([
-            { $match: { status: 'completed' } },
-            { $group: { _id: null, total: { $sum: "$amount" } } }
-        ]).then(result => {
-            stats.totalRevenue = result.length > 0 ? result[0].total : 0;
-        }).catch(() => 0));
+    // Check main connection status
+    const connectionState = mongoose.connection.readyState;
+    console.log(`[Connection] Mongoose state: ${connectionState} (1=Connected)`);
+    
+    if (connectionState !== 1) {
+        throw new Error('Database connection not ready');
     }
 
-    // Fetch last 5 system events from AuditLog
-    promises.push(AuditLog.find().sort({ createdAt: -1 }).limit(5).then(logs => {
-        stats.recentActivity = logs.map(l => ({
-            action: l.action.replace(/_/g, ' '),
-            timestamp: l.createdAt,
-            targetId: l.targetId
-        }));
-    }).catch(() => []));
+    const conn = mongoose.connection;
+    
+    // Switch to target databases
+    // Note: patient-service uses 'patients' as dbName in its connection
+    const authDb = conn.useDb('users', { useCache: true });
+    const patientDb = conn.useDb('patients', { useCache: true }); 
+    const doctorDb = conn.useDb('doctor_db', { useCache: true });
+    const appointmentDb = conn.useDb('appointment_db', { useCache: true });
+    const paymentDb = conn.useDb('payment_db', { useCache: true });
+
+    // Debugging: List collections to verify visibility
+    const listCollections = async (db, name) => {
+        try {
+            const collections = await db.db.listCollections().toArray();
+            const names = collections.map(c => c.name);
+            console.log(`[Debug] Collections in DB [${name}]:`, names);
+            return names;
+        } catch (e) {
+            console.warn(`[Debug] Could not list collections in DB [${name}]:`, e.message);
+            return [];
+        }
+    };
+
+    await Promise.all([
+        listCollections(authDb, 'users'),
+        listCollections(patientDb, 'patients'),
+        listCollections(doctorDb, 'doctor_db'),
+        listCollections(appointmentDb, 'appointment_db'),
+        listCollections(paymentDb, 'payment_db')
+    ]);
+
+    // Define models with EXPLICIT collection names confirmed from services
+    const UserM = authDb.model('User', userSchema, 'users');
+    const PatientM = patientDb.model('Patient', patientSchema, 'patients');
+    const DoctorM = doctorDb.model('Doctor', doctorSchema, 'doctors');
+    const AppointmentM = appointmentDb.model('Appointment', appointmentSchema, 'appointments');
+    const PaymentM = paymentDb.model('Payment', paymentSchema, 'payments');
+
+    const promises = [
+      // 1. Doctor Stats
+      DoctorM.countDocuments().then(c => {
+          stats.totalDoctors = c;
+          console.log(`[Stats Check] Doctors Found: ${c}`);
+      }).catch(e => console.error('Error [doctor_db]:', e.message)),
+      
+      DoctorM.countDocuments({ verified: false }).then(c => {
+          stats.pendingDoctorsCount = c;
+          console.log(`[Stats Check] Pending Doctors: ${c}`);
+      }).catch(() => 0),
+      
+      DoctorM.find({ verified: false }).sort({ createdAt: -1 }).limit(5).lean().then(docs => stats.pendingDoctors = docs).catch(() => []),
+
+      // 2. Patient Stats
+      PatientM.countDocuments().then(c => {
+          stats.totalPatients = c;
+          console.log(`[Stats Check] Patients Found: ${c}`);
+      }).catch(e => console.error('Error [patient_db]:', e.message)),
+
+      // 3. Appointment Stats
+      AppointmentM.countDocuments().then(c => {
+          stats.totalAppointments = c;
+          console.log(`[Stats Check] Appointments Found: ${c}`);
+      }).catch(e => console.error('Error [appointment_db]:', e.message)),
+      
+      AppointmentM.find().sort({ createdAt: -1 }).limit(5).lean().then(apts => stats.recentAppointments = apts).catch(() => []),
+
+      // 4. Payment Stats
+      PaymentM.countDocuments().then(c => {
+          stats.totalPayments = c;
+          console.log(`[Stats Check] Payments Found: ${c}`);
+      }).catch(() => 0),
+      
+      PaymentM.aggregate([
+          { $match: { status: 'completed' } },
+          { $group: { _id: null, total: { $sum: "$amount" } } }
+      ]).then(result => {
+          stats.totalRevenue = result.length > 0 ? result[0].total : 0;
+          console.log(`[Stats Check] Revenue Calculated: ${stats.totalRevenue}`);
+      }).catch(() => 0),
+
+      // 5. User Stats
+      UserM.find().sort({ createdAt: -1 }).limit(5).lean().then(users => {
+          stats.recentUsers = users;
+          console.log(`[Stats Check] Recent Users Found: ${users.length}`);
+      }).catch(e => console.error('Error [users]:', e.message)),
+
+      // 6. Audit Activity (Current Connection)
+      AuditLog.find().sort({ createdAt: -1 }).limit(5).then(logs => {
+          stats.recentActivity = logs.map(l => ({
+              action: l.action.replace(/_/g, ' '),
+              timestamp: l.createdAt,
+              targetId: l.targetId
+          }));
+      }).catch(() => [])
+    ];
 
     await Promise.all(promises);
+    console.log('[Admin Stats] Aggregation successful. Results ready.');
+    console.log('------------------------------------------------');
     return successResponse(res, stats);
   } catch (error) {
     console.error(' [Admin Service] getStats Exception:', error);

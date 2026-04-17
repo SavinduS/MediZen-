@@ -71,7 +71,7 @@ const handlePaymentSuccess = async (data) => {
     smsStatus = result.status || 'sent';
   } catch (smsErr) {
     smsStatus = 'failed';
-    console.error(`[SMS Error]`, smsErr.message);
+    console.error(`❌ [SMS Notification Error] Receipt: ${receiptNumber}, Phone: ${phone}. Reason: ${smsErr.message}`);
   }
 
   // 2. Try Email
