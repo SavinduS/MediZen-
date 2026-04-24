@@ -135,7 +135,7 @@ function AppContent() {
             <nav className="space-x-8 hidden md:flex font-medium items-center text-sm">
               <SignedIn>
                 {role === "admin" && (
-                   <Link to="/admin/dashboard" className="hover:text-blue-400 transition text-blue-100">Admin Panel</Link>
+                  <Link to="/admin/dashboard" className="hover:text-blue-400 transition text-blue-100">Admin Panel</Link>
                 )}
                 {role === "doctor" && (
                   <>
@@ -150,6 +150,43 @@ function AppContent() {
                     <Link to="/my-appointments" className="hover:text-blue-400 transition text-blue-100">Appointments</Link>
                     <Link to="/my-prescriptions" className="hover:text-blue-400 transition text-blue-100">Prescriptions</Link>
                     <Link to="/symptoms" className="hover:text-blue-400 transition text-blue-100 font-bold">AI Bot</Link>
+
+                    <Link to="/" className="hover:text-blue-400 transition text-slate-300">
+                      Home
+                    </Link>
+                    <Link to="/doctors" className="hover:text-blue-400 transition text-slate-300">
+                      Find a Doctor
+                    </Link>
+                    <Link
+                      to="/profile"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      to="/reports"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      Medical Reports
+                    </Link>
+                    <Link
+                      to="/my-appointments"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      My Appointments
+                    </Link>
+                    <Link
+                      to="/my-prescriptions"
+                      className="hover:text-blue-400 transition text-blue-100"
+                    >
+                      My Prescriptions
+                    </Link>
+                    <Link
+                      to="/symptoms"
+                      className="hover:text-blue-400 transition text-blue-100 font-bold"
+                    >
+                      AI Symptom Bot
+                    </Link>
                   </>
                 )}
               </SignedIn>
