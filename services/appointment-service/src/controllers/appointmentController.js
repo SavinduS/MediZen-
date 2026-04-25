@@ -138,9 +138,10 @@ exports.getAvailableSlots = async (req, res) => {
         // Let's call a discovery endpoint or just try to get the profile.
         
         let doctorProfile;
+        const DOCTOR_API_URL = process.env.DOCTOR_SERVICE_URL || 'http://localhost:5003/api/doctors';
         try {
             // Try as internal ID
-            const profileRes = await axios.get(`http://localhost:5003/api/doctors/${idParam}`);
+            const profileRes = await axios.get(`${DOCTOR_API_URL}/${idParam}`);
             doctorProfile = profileRes.data;
             doctorInternalId = doctorProfile._id;
         } catch (e) {
@@ -152,7 +153,7 @@ exports.getAvailableSlots = async (req, res) => {
         }
 
         // 2. Get Weekly Availability
-        const doctorServiceUrl = `http://localhost:5003/api/doctors/${doctorInternalId}/availability`;
+        const doctorServiceUrl = `${DOCTOR_API_URL}/${doctorInternalId}/availability`;
         const response = await axios.get(doctorServiceUrl);
         const weeklyAvailability = response.data;
 

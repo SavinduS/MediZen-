@@ -129,7 +129,11 @@ services:
       - medizen-network
 
   client:
-    build: ./client
+    build: 
+      context: ./client
+      args:
+        VITE_GATEWAY_URL: "http://localhost:5010"
+        VITE_CLERK_PUBLISHABLE_KEY: "pk_test_YnJhdmUtdnVsdHVyZS04Ni5jbGVyay5hY2NvdW50cy5kZXYk"
     ports:
       - "5173:80"
     env_file:
