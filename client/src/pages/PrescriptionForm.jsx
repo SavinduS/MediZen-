@@ -19,6 +19,7 @@ const PrescriptionForm = () => {
     // Extract clinical IDs from the URL context
     const appointmentId = searchParams.get("aptId");
     const patientId = searchParams.get("patientId");
+    const patientName = searchParams.get("patientName");
 
     const [diagnosis, setDiagnosis] = useState('');
     const [medicines, setMedicines] = useState([{ name: '', dosage: '', frequency: '' }]);
@@ -53,8 +54,8 @@ const PrescriptionForm = () => {
                 // Using the real email of the logged-in doctor from Clerk
                 doctorId: user?.primaryEmailAddress?.emailAddress || "DOC-CORE",
                 patientId,
-                // Passing a readable name placeholder for the PDF
-                patientName: `Verified Patient (${patientId})`, 
+                // Passing actual name or fallback
+                patientName: patientName || `Verified Patient (${patientId})`, 
                 diagnosis,
                 medicines
             };

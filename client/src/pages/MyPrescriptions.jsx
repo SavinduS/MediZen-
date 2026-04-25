@@ -71,7 +71,7 @@ const MyPrescriptions = () => {
                                         <Clock size={14} className="text-blue-500" /> {new Date(px.issuedAt).toLocaleDateString()}
                                     </p>
                                     <p className="text-slate-500 text-xs font-bold flex items-center gap-1.5">
-                                        <User size={14} className="text-blue-500" /> Issued to {px.patientName}
+                                        <User size={14} className="text-blue-500" /> Issued to {user?.fullName || user?.firstName || px.patientName}
                                     </p>
                                 </div>
                             </div>

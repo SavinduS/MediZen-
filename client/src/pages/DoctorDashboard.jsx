@@ -183,7 +183,7 @@ const DoctorDashboard = () => {
                                                 <Video size={20}/>
                                             </button>
                                             <button 
-                                                onClick={() => navigate(`/issue-prescription?aptId=${apt.appointmentId}&patientId=${apt.patientId}`)}
+                                                onClick={() => navigate(`/issue-prescription?aptId=${apt.appointmentId}&patientId=${apt.patientId}&patientName=${encodeURIComponent(patient.firstName || userAccount.name || userAccount.email?.split('@')[0] || apt.patientId)}`)}
                                                 className="flex-1 md:flex-none bg-blue-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100 active:scale-95"
                                             >
                                                 Issue Rx
