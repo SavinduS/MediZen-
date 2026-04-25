@@ -1,24 +1,4 @@
 services:
-  # Databases & Infrastructure
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    ports:
-      - "27019:27017"
-    volumes:
-      - mongodb-data:/data/db
-    networks:
-      - medizen-network
-
-  mongodb-ai:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - medizen-network
-
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -33,11 +13,8 @@ services:
     build: ./services/auth-service
     ports:
       - "5001:5001"
-    environment:
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - MONGO_URI=mongodb://mongodb:27017/users
-    depends_on:
-      - mongodb
+    env_file:
+      - ./services/auth-service/.env
     networks:
       - medizen-network
 
@@ -45,10 +22,8 @@ services:
     build: ./services/patient-service
     ports:
       - "5002:5002"
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/patients
-    depends_on:
-      - mongodb
+    env_file:
+      - ./services/patient-service/.env
     networks:
       - medizen-network
 
@@ -56,10 +31,8 @@ services:
     build: ./services/doctor-service
     ports:
       - "5003:5003"
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/doctor_db
-    depends_on:
-      - mongodb
+    env_file:
+      - ./services/doctor-service/.env
     networks:
       - medizen-network
 
@@ -67,11 +40,12 @@ services:
     build: ./services/appointment-service
     ports:
       - "5004:5004"
+    env_file:
+      - ./services/appointment-service/.env
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/appointment_db
+      - DOCTOR_SERVICE_URL=http://doctor-service:5003/api/doctors
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
-      - mongodb
       - rabbitmq
     networks:
       - medizen-network
@@ -80,12 +54,10 @@ services:
     build: ./services/symptom-checker-service
     ports:
       - "5005:5005"
+    env_file:
+      - ./services/symptom-checker-service/.env
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - MONGO_URI=mongodb://mongodb-ai:27017/symptom_db
       - PATIENT_SERVICE_URL=http://api-gateway:5010
-    depends_on:
-      - mongodb-ai
     networks:
       - medizen-network
 
@@ -93,10 +65,8 @@ services:
     build: ./services/telemedicine-service
     ports:
       - "5006:5006"
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/session_db
-    depends_on:
-      - mongodb
+    env_file:
+      - ./services/telemedicine-service/.env
     networks:
       - medizen-network
 
@@ -104,11 +74,12 @@ services:
     build: ./services/payment-service
     ports:
       - "5007:5007"
+    env_file:
+      - ./services/payment-service/.env
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/payment_db
+      - PAYMENT_SERVICE_URL=http://payment-service:5007
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
-      - mongodb
       - rabbitmq
     networks:
       - medizen-network
@@ -117,11 +88,11 @@ services:
     build: ./services/notification-service
     ports:
       - "5008:5008"
+    env_file:
+      - ./services/notification-service/.env
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/notification_db
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
-      - mongodb
       - rabbitmq
     networks:
       - medizen-network
@@ -130,12 +101,11 @@ services:
     build: ./services/admin-service
     ports:
       - "5009:5009"
+    env_file:
+      - ./services/admin-service/.env
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/admin_db
       - DOCTOR_SERVICE_URL=http://api-gateway:5010
       - AUTH_SERVICE_URL=http://api-gateway:5010
-    depends_on:
-      - mongodb
     networks:
       - medizen-network
 
@@ -143,6 +113,8 @@ services:
     build: ./services/api-gateway
     ports:
       - "5010:5010"
+    env_file:
+      - ./services/api-gateway/.env
     environment:
       - AUTH_SERVICE_URL=http://auth-service:5001
       - PATIENT_SERVICE_URL=http://patient-service:5002
@@ -160,6 +132,8 @@ services:
     build: ./client
     ports:
       - "5173:80"
+    env_file:
+      - ./client/.env
     environment:
       - VITE_GATEWAY_URL=http://localhost:5010
     depends_on:
@@ -195,8 +169,4 @@ networks:
     driver: bridge
 
 volumes:
-  mongo-db-data:
-  mongodb-data:
-  symptom-data:
   grafana-storage:
-  mongo_data:
