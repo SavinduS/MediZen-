@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: api-gateway:latest
+          image: savindus/medizen-api-gateway:latest
           ports:
             - containerPort: 5010
           env:
