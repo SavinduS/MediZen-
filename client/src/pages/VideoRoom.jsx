@@ -18,7 +18,7 @@ import AgoraRTC, {
 import { generateVideoToken } from '../services/api';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useUser } from "@clerk/clerk-react"; // Access auth state
-import { PhoneOff, Mic, Video as VideoIcon, User, ShieldCheck } from 'lucide-react';
+import { PhoneOff, Mic, MicOff, Video as VideoIcon, VideoOff, User, ShieldCheck } from 'lucide-react';
 
 // Agora Client Global Configuration
 const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
@@ -105,6 +105,23 @@ const CallInterface = ({ channelName, token, role }) => {
   const { isLoading: camLoading, localCameraTrack } = useLocalCameraTrack();
   const remoteUsers = useRemoteUsers();
 
+  const [micOn, setMicOn] = useState(true);
+  const [cameraOn, setCameraOn] = useState(true);
+
+  const toggleMic = async () => {
+    if (localMicrophoneTrack) {
+      await localMicrophoneTrack.setMuted(micOn); // setMuted(true) mutes the track
+      setMicOn(!micOn);
+    }
+  };
+
+  const toggleCamera = async () => {
+    if (localCameraTrack) {
+      await localCameraTrack.setMuted(cameraOn);
+      setCameraOn(!cameraOn);
+    }
+  };
+
   // JOIN CHANNEL: Uses local development AppID. Role is publisher by default.
   useJoin({ 
       appid: "abc123456789def0123456789abcdef0", 
@@ -161,14 +178,24 @@ const CallInterface = ({ channelName, token, role }) => {
 
       {/* CALL CONTROLS */}
       <div className="py-10 flex justify-center gap-6">
-        <button className="bg-slate-800 text-white p-5 rounded-full hover:bg-slate-700 transition"><Mic size={24}/></button>
+        <button 
+          onClick={toggleMic}
+          className={`${micOn ? 'bg-slate-800 hover:bg-slate-700' : 'bg-red-500 hover:bg-red-600'} text-white p-5 rounded-full transition`}
+        >
+          {micOn ? <Mic size={24}/> : <MicOff size={24}/>}
+        </button>
         <button 
           onClick={() => window.location.href = (role === 'doctor' ? '/doctor-dashboard' : '/my-appointments')}
           className="bg-red-500 hover:bg-red-400 text-white px-12 py-4 rounded-[1.5rem] font-black uppercase text-xs tracking-widest flex items-center gap-3 transition shadow-2xl shadow-red-900/40 active:scale-95"
         >
           <PhoneOff size={20} /> End Session
         </button>
-        <button className="bg-slate-800 text-white p-5 rounded-full hover:bg-slate-700 transition"><VideoIcon size={24}/></button>
+        <button 
+          onClick={toggleCamera}
+          className={`${cameraOn ? 'bg-slate-800 hover:bg-slate-700' : 'bg-red-500 hover:bg-red-600'} text-white p-5 rounded-full transition`}
+        >
+          {cameraOn ? <VideoIcon size={24}/> : <VideoOff size={24}/>}
+        </button>
       </div>
     </div>
   );
