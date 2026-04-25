@@ -21,7 +21,7 @@ Thumbs.db
 .env
 
 # Ignores your Kubernetes secrets file specifically
-k8s/secrets.yaml
+k8s/config/secrets.yaml
 
 # (Optional) If you use different names for secrets, add them here
 k8s/*.secrets.yaml
