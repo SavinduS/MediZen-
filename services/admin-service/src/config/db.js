@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Primary connection (admin_db) - Default to localhost:27017
-    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/admin_db';
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/admin_db';
     
     // Establishing the primary connection
     await mongoose.connect(mongoUri);

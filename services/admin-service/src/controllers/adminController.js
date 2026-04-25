@@ -415,8 +415,17 @@ const getAllPayments = async (req, res, next) => {
 const getPendingDoctors = async (req, res, next) => {
   try {
     const response = await axios.get(`${DOCTOR_SERVICE_URL}/api/doctors`);
-    const doctors = Array.isArray(response.data) ? response.data : [];
+    // Doctor service may return array directly OR wrapped in { data: [...] }
+    let doctors = [];
+    if (Array.isArray(response.data)) {
+        doctors = response.data;
+    } else if (response.data?.data && Array.isArray(response.data.data)) {
+        doctors = response.data.data;
+    } else if (response.data?.users && Array.isArray(response.data.users)) {
+        doctors = response.data.users;
+    }
     const pending = doctors.filter(d => d.verified === false);
+    console.log(`[Admin] Pending doctors found: ${pending.length}`);
     return successResponse(res, pending);
   } catch (error) {
     console.error(' [Admin Service] getPendingDoctors Exception:', error);
@@ -555,22 +564,30 @@ const getStats = async (req, res, next) => {
           console.log(`[Stats Check] Appointments Found: ${c}`);
       }).catch(e => console.error('Error [appointment_db]:', e.message)),
       
-      AppointmentM.find().sort({ createdAt: -1 }).limit(5).lean().then(async (apts) => {
+      AppointmentM.find().sort({ createdAt: -1 }).limit(10).lean().then(async (apts) => {
           // Enrich appointments with patient and doctor names
+          // patientId / doctorId may be a MongoDB ObjectId OR a Clerk ID string
           const enriched = await Promise.all(apts.map(async (apt) => {
-              const [patient, doctor] = await Promise.all([
-                  PatientM.findOne({ _id: apt.patientId }).lean().catch(() => null),
-                  DoctorM.findOne({ _id: apt.doctorId }).lean().catch(() => null)
-              ]);
+              const patientId = apt.patientId;
+              const doctorId  = apt.doctorId;
+
+              // Try finding patient by _id (ObjectId) first, then by clerkId (string)
+              const patient = await PatientM.findOne({ _id: patientId }).lean()
+                  .catch(() => PatientM.findOne({ clerkId: patientId }).lean().catch(() => null));
+
+              // Try finding doctor by _id (ObjectId) first, then by userId / clerkId (string)
+              const doctor = await DoctorM.findOne({ _id: doctorId }).lean()
+                  .catch(() => DoctorM.findOne({ userId: doctorId }).lean().catch(() => null));
+
               return {
                   ...apt,
-                  patientName: patient?.name || 'Unknown Patient',
-                  doctorName: doctor?.name || 'Unknown Doctor',
-                  specialty: doctor?.specialization || 'General'
+                  patientName: patient?.name || patient?.email?.split('@')[0] || `Patient ${String(patientId).slice(-4)}`,
+                  doctorName:  doctor?.name  || `Doctor ${String(doctorId).slice(-4)}`,
+                  specialty:   doctor?.specialization || 'General'
               };
           }));
           stats.recentAppointments = enriched;
-      }).catch(() => []),
+      }).catch((e) => { console.error('[Stats] recentAppointments enrichment error:', e.message); }),
 
       // 4. Payment Stats
       PaymentM.countDocuments().then(c => {
