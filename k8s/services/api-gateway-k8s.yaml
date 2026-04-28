@@ -48,5 +48,5 @@ spec:
     app: api-gateway
   ports:
     - protocol: TCP
-      port: 5010
+      port: 80
       targetPort: 5010
