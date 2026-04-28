@@ -17,12 +17,27 @@ spec:
         image: savindus/medizen-patient-service:latest
         ports:
         - containerPort: 5002
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
         env:
         - name: MONGO_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
               key: MONGO_URI
+        - name: CLERK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: CLERK_SECRET_KEY
+        envFrom:
+        - configMapRef:
+            name: medizen-config
 ---
 apiVersion: v1
 kind: Service

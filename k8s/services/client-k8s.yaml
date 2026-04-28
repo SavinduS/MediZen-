@@ -18,6 +18,25 @@ spec:
           image: savindus/medizen-client:latest
           ports:
             - containerPort: 80
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
           # ⚠️  IMPORTANT: VITE_* variables are baked into the JS bundle at BUILD TIME.
           # They cannot be changed at runtime via k8s env vars.
           # Before pushing the image, rebuild it with the external api-gateway IP:

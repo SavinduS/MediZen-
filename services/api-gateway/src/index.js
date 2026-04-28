@@ -24,16 +24,20 @@ const services = {
 };
 
 // Route configurations
+// Note: http-proxy-middleware will append the path from the context to the target.
+// e.g. /api/auth/sync -> http://auth-service:5001/api/auth/sync
+// Since our microservices are also mounting at /api/auth, this is usually correct.
+// However, we ensure the pathRewrite is explicitly handled for symptom-check which rewrites to /
+
 const routes = [
     { context: '/api/auth', target: services.auth },
     { context: '/api/patient', target: services.patient },
-    { context: '/api/doctors/:id/slots', target: services.appointment }, // Specific route first
     { context: '/api/doctors', target: services.doctor },
     { context: '/api/appointments', target: services.appointment },
     { 
         context: '/api/symptom-check', 
         target: services.symptom,
-        pathRewrite: { '^/api/symptom-check/?': '/' } 
+        pathRewrite: { '^/api/symptom-check': '/' } 
     },
     { context: '/api/sessions', target: services.telemedicine },
     { context: '/api/payments', target: services.payment },
@@ -41,19 +45,20 @@ const routes = [
     { context: '/api/admin', target: services.admin },
 ];
 
-// Special case: /api/doctors in appointment service (for slots)
-// We might need to handle this carefully if /api/doctors is also in doctor-service
-// Looking at api.js:
-// const doctorAPI = axios.create({ baseURL: 'http://localhost:5003/api/doctors' });
-// const doctorSlotsAPI = axios.create({ baseURL: 'http://localhost:5004/api/doctors' });
-// This is a conflict if they share the same base path.
-// Let's check how they are used.
-
+// Apply proxy routes
 routes.forEach(route => {
     app.use(route.context, createProxyMiddleware({
         target: route.target,
         changeOrigin: true,
-        pathRewrite: route.pathRewrite || {}, // Apply rewrite if defined
+        pathRewrite: route.pathRewrite || {},
+        onProxyReq: (proxyReq, req, res) => {
+            // Optional: Log proxy requests for debugging
+            // console.log(`Proxying ${req.method} ${req.url} to ${route.target}`);
+        },
+        onError: (err, req, res) => {
+            console.error(`Proxy Error for ${route.context}:`, err.message);
+            res.status(502).send('Bad Gateway: Service might be down.');
+        }
     }));
 });
 
@@ -64,4 +69,6 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`API Gateway running on port ${PORT}`);
+    console.log('Routes mounted:');
+    routes.forEach(r => console.log(` - ${r.context} -> ${r.target}`));
 });

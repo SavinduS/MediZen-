@@ -17,9 +17,24 @@ spec:
         image: savindus/medizen-appointment-service:latest
         ports:
         - containerPort: 5004
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+        env:
+        - name: MONGO_URI
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: MONGO_URI
         envFrom:
         - configMapRef:
             name: appointment-config
+        - configMapRef:
+            name: medizen-config
 
 ---
 apiVersion: v1

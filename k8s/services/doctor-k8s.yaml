@@ -18,12 +18,36 @@ spec:
         image: savindus/medizen-doctor-service:latest # This points to your docker image
         ports:
         - containerPort: 5003
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5003
+          initialDelaySeconds: 5
+          periodSeconds: 10
         env:
         - name: MONGO_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
               key: DOCTOR_MONGO_URI
+        - name: CLERK_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: CLERK_SECRET_KEY
         envFrom:
         - configMapRef:
             name: doctor-config

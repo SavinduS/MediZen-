@@ -17,12 +17,44 @@ spec:
         image: savindus/medizen-payment-service:latest
         ports:
         - containerPort: 5007
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5007
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5007
+          initialDelaySeconds: 5
+          periodSeconds: 10
         env:
         - name: MONGODB_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
               key: MONGO_URI
+        - name: STRIPE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: STRIPE_SECRET_KEY
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: STRIPE_WEBHOOK_SECRET
+        envFrom:
+        - configMapRef:
+            name: medizen-config
 ---
 apiVersion: v1
 kind: Service

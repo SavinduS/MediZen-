@@ -17,12 +17,49 @@ spec:
         image: savindus/medizen-notification-service:latest
         ports:
         - containerPort: 5008
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5008
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5008
+          initialDelaySeconds: 5
+          periodSeconds: 10
         env:
         - name: MONGO_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
               key: MONGO_URI
+        - name: MONGODB_URI
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: MONGO_URI
+        - name: EMAIL_PASS
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: EMAIL_PASS
+        - name: TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: TWILIO_AUTH_TOKEN
+        envFrom:
+        - configMapRef:
+            name: medizen-config
 ---
 apiVersion: v1
 kind: Service

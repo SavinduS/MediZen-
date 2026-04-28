@@ -22,23 +22,27 @@ data:
 
 ---
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
-  name: medizen-secrets
+  name: doctor-config
   namespace: default
-type: Opaque
-stringData:
-  # Common
-  MONGO_URI: "YOUR_MONGO_URI"
-  JWT_SECRET: "YOUR_JWT_SECRET"
+data:
+  PORT: "5003"
 
-  # Payment specific
-  STRIPE_SECRET_KEY: "YOUR_STRIPE_SECRET_KEY"
-  STRIPE_WEBHOOK_SECRET: "YOUR_STRIPE_WEBHOOK_SECRET"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: appointment-config
+  namespace: default
+data:
+  PORT: "5004"
 
-  # Notification specific
-  EMAIL_PASS: "YOUR_EMAIL_APP_PASSWORD"
-  TWILIO_AUTH_TOKEN: "YOUR_TWILIO_AUTH_TOKEN"
-
-  # AI Symptom Checker
-  GEMINI_API_KEY: "YOUR_GEMINI_API_KEY"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemedicine-config
+  namespace: default
+data:
+  PORT: "5006"

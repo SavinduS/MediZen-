@@ -18,9 +18,36 @@ spec:
         image: savindus/medizen-telemedicine-service:latest
         ports:
         - containerPort: 5006
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5006
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5006
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        env:
+        - name: MONGO_URI
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: MONGO_URI
         envFrom:
         - configMapRef:
             name: telemedicine-config # Environment variables set through ConfigMap
+        - configMapRef:
+            name: medizen-config
 
 ---
 # Service: Internal network access for Telemedicine Service

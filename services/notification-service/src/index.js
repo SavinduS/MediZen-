@@ -19,13 +19,6 @@ let RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 
 console.log('------------------------------------------------');
 console.log(`Checking Environment: RABBITMQ_URL is "${RABBITMQ_URL}"`);
-
-// If the URL is missing or using Kubernetes service names locally, force localhost
-if (!RABBITMQ_URL || RABBITMQ_URL.includes('rabbitmq-service')) {
-    console.log('Override: Forcing localhost for RabbitMQ connection.');
-    RABBITMQ_URL = 'amqp://localhost';
-}
-console.log(`Final Configuration: Using RabbitMQ at ${RABBITMQ_URL}`);
 console.log('------------------------------------------------');
 
 /**
