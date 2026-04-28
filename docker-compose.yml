@@ -1,205 +1,214 @@
 services:
-  mongodb:
-    image: mongo:latest
-    container_name: mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - medizen-network
-
+  # Infrastructure
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq
+    container_name: medizen-rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
     networks:
       - medizen-network
+    restart: always
 
-  # Services
+  # Microservices
   auth-service:
-    build: ./services/auth-service
+    build: 
+      context: ./services/auth-service
+    container_name: medizen-auth-service
     ports:
       - "5001:5001"
     env_file:
       - ./services/auth-service/.env
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/auth_db
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-    depends_on:
-      - mongodb
     networks:
       - medizen-network
+    restart: always
 
   patient-service:
-    build: ./services/patient-service
+    build:
+      context: ./services/patient-service
+    container_name: medizen-patient-service
     ports:
       - "5002:5002"
     env_file:
       - ./services/patient-service/.env
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/patient_db
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
-      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
-      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
-    depends_on:
-      - mongodb
     networks:
       - medizen-network
+    restart: always
 
   doctor-service:
-    build: ./services/doctor-service
+    build:
+      context: ./services/doctor-service
+    container_name: medizen-doctor-service
     ports:
       - "5003:5003"
     env_file:
       - ./services/doctor-service/.env
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/doctor_db
-      - DOCTOR_MONGO_URI=mongodb://mongodb:27017/doctor_db
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-    depends_on:
-      - mongodb
     networks:
       - medizen-network
+    restart: always
 
   appointment-service:
-    build: ./services/appointment-service
+    build:
+      context: ./services/appointment-service
+    container_name: medizen-appointment-service
     ports:
       - "5004:5004"
     env_file:
       - ./services/appointment-service/.env
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/appointment_db
-      - DOCTOR_SERVICE_URL=http://doctor-service:5003/api/doctors
       - RABBITMQ_URL=amqp://rabbitmq
+      - DOCTOR_SERVICE_URL=http://medizen-doctor-service:5003
     depends_on:
-      - mongodb
       - rabbitmq
     networks:
       - medizen-network
+    restart: always
 
-  symptom-checker:
-    build: ./services/symptom-checker-service
+  symptom-checker-service:
+    build:
+      context: ./services/symptom-checker-service
+    container_name: medizen-symptom-checker-service
     ports:
       - "5005:5005"
     env_file:
       - ./services/symptom-checker-service/.env
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/symptom_db
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - PATIENT_SERVICE_URL=http://api-gateway:5010
-    depends_on:
-      - mongodb
+      - PATIENT_SERVICE_URL=http://medizen-patient-service:5002
     networks:
       - medizen-network
+    restart: always
 
   telemedicine-service:
-    build: ./services/telemedicine-service
+    build:
+      context: ./services/telemedicine-service
+    container_name: medizen-telemedicine-service
     ports:
       - "5006:5006"
     env_file:
       - ./services/telemedicine-service/.env
-    environment:
-      - MONGO_URI=mongodb://mongodb:27017/telemedicine_db
-      - AGORA_APP_ID=${AGORA_APP_ID}
-      - AGORA_APP_CERTIFICATE=${AGORA_APP_CERTIFICATE}
-    depends_on:
-      - mongodb
     networks:
       - medizen-network
+    restart: always
 
   payment-service:
-    build: ./services/payment-service
+    build:
+      context: ./services/payment-service
+    container_name: medizen-payment-service
     ports:
       - "5007:5007"
     env_file:
       - ./services/payment-service/.env
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/payment_db
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
-      - mongodb
       - rabbitmq
     networks:
       - medizen-network
+    restart: always
 
   notification-service:
-    build: ./services/notification-service
+    build:
+      context: ./services/notification-service
+    container_name: medizen-notification-service
     ports:
       - "5008:5008"
     env_file:
       - ./services/notification-service/.env
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/notification_db
-      - EMAIL_USER=${EMAIL_USER}
-      - EMAIL_PASS=${EMAIL_PASS}
-      - TWILIO_SID=${TWILIO_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
-      - mongodb
       - rabbitmq
     networks:
       - medizen-network
+    restart: always
 
   admin-service:
-    build: ./services/admin-service
+    build:
+      context: ./services/admin-service
+    container_name: medizen-admin-service
     ports:
       - "5009:5009"
     env_file:
       - ./services/admin-service/.env
     environment:
-      - MONGO_URI=mongodb://mongodb:27017/admin_db
-      - MONGODB_URI=mongodb://mongodb:27017/admin_db
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-      - DOCTOR_SERVICE_URL=http://api-gateway:5010
-      - AUTH_SERVICE_URL=http://api-gateway:5010
-    depends_on:
-      - mongodb
+      - AUTH_SERVICE_URL=http://medizen-api-gateway:5010
+      - DOCTOR_SERVICE_URL=http://medizen-api-gateway:5010
     networks:
       - medizen-network
+    restart: always
 
   api-gateway:
-    build: ./services/api-gateway
+    build:
+      context: ./services/api-gateway
+    container_name: medizen-api-gateway
     ports:
       - "5010:5010"
     env_file:
       - ./services/api-gateway/.env
     environment:
-      - AUTH_SERVICE_URL=http://auth-service:5001
-      - PATIENT_SERVICE_URL=http://patient-service:5002
-      - DOCTOR_SERVICE_URL=http://doctor-service:5003
-      - APPOINTMENT_SERVICE_URL=http://appointment-service:5004
-      - SYMPTOM_SERVICE_URL=http://symptom-checker:5005
-      - TELEMEDICINE_SERVICE_URL=http://telemedicine-service:5006
-      - PAYMENT_SERVICE_URL=http://payment-service:5007
-      - NOTIFICATION_SERVICE_URL=http://notification-service:5008
-      - ADMIN_SERVICE_URL=http://admin-service:5009
+      - AUTH_SERVICE_URL=http://medizen-auth-service:5001
+      - PATIENT_SERVICE_URL=http://medizen-patient-service:5002
+      - DOCTOR_SERVICE_URL=http://medizen-doctor-service:5003
+      - APPOINTMENT_SERVICE_URL=http://medizen-appointment-service:5004
+      - SYMPTOM_SERVICE_URL=http://medizen-symptom-checker-service:5005
+      - TELEMEDICINE_SERVICE_URL=http://medizen-telemedicine-service:5006
+      - PAYMENT_SERVICE_URL=http://medizen-payment-service:5007
+      - NOTIFICATION_SERVICE_URL=http://medizen-notification-service:5008
+      - ADMIN_SERVICE_URL=http://medizen-admin-service:5009
+    depends_on:
+      - auth-service
+      - patient-service
+      - doctor-service
+      - appointment-service
+      - symptom-checker-service
+      - telemedicine-service
+      - payment-service
+      - notification-service
+      - admin-service
     networks:
       - medizen-network
+    restart: always
 
   client:
-    build: 
+    build:
       context: ./client
+      dockerfile: Dockerfile
       args:
-        VITE_GATEWAY_URL: ${VITE_GATEWAY_URL:-http://localhost:5010}
-        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
+        - VITE_GATEWAY_URL=http://localhost:5010
+    container_name: medizen-client
     ports:
       - "5173:80"
+    env_file:
+      - ./client/.env
     depends_on:
       - api-gateway
     networks:
       - medizen-network
+    restart: always
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: medizen-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - medizen-network
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: medizen-grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - medizen-network
+    restart: always
 
 networks:
   medizen-network:
     driver: bridge
-
-volumes:
-  grafana-storage:
-  mongodb_data:
