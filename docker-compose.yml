@@ -1,4 +1,14 @@
 services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - medizen-network
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -15,6 +25,10 @@ services:
       - "5001:5001"
     env_file:
       - ./services/auth-service/.env
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/auth_db
+    depends_on:
+      - mongodb
     networks:
       - medizen-network
 
@@ -24,6 +38,10 @@ services:
       - "5002:5002"
     env_file:
       - ./services/patient-service/.env
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/patient_db
+    depends_on:
+      - mongodb
     networks:
       - medizen-network
 
@@ -33,6 +51,10 @@ services:
       - "5003:5003"
     env_file:
       - ./services/doctor-service/.env
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/doctor_db
+    depends_on:
+      - mongodb
     networks:
       - medizen-network
 
@@ -43,9 +65,11 @@ services:
     env_file:
       - ./services/appointment-service/.env
     environment:
+      - MONGO_URI=mongodb://mongodb:27017/appointment_db
       - DOCTOR_SERVICE_URL=http://doctor-service:5003/api/doctors
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
+      - mongodb
       - rabbitmq
     networks:
       - medizen-network
@@ -57,7 +81,10 @@ services:
     env_file:
       - ./services/symptom-checker-service/.env
     environment:
+      - MONGO_URI=mongodb://mongodb:27017/symptom_db
       - PATIENT_SERVICE_URL=http://api-gateway:5010
+    depends_on:
+      - mongodb
     networks:
       - medizen-network
 
@@ -67,6 +94,10 @@ services:
       - "5006:5006"
     env_file:
       - ./services/telemedicine-service/.env
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017/telemedicine_db
+    depends_on:
+      - mongodb
     networks:
       - medizen-network
 
@@ -77,9 +108,10 @@ services:
     env_file:
       - ./services/payment-service/.env
     environment:
-      - PAYMENT_SERVICE_URL=http://payment-service:5007
+      - MONGODB_URI=mongodb://mongodb:27017/payment_db
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
+      - mongodb
       - rabbitmq
     networks:
       - medizen-network
@@ -91,8 +123,10 @@ services:
     env_file:
       - ./services/notification-service/.env
     environment:
+      - MONGODB_URI=mongodb://mongodb:27017/notification_db
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
+      - mongodb
       - rabbitmq
     networks:
       - medizen-network
@@ -104,8 +138,12 @@ services:
     env_file:
       - ./services/admin-service/.env
     environment:
+      - MONGO_URI=mongodb://mongodb:27017/admin_db
+      - MONGODB_URI=mongodb://mongodb:27017/admin_db
       - DOCTOR_SERVICE_URL=http://api-gateway:5010
       - AUTH_SERVICE_URL=http://api-gateway:5010
+    depends_on:
+      - mongodb
     networks:
       - medizen-network
 
@@ -133,11 +171,8 @@ services:
       context: ./client
       args:
         VITE_GATEWAY_URL: "http://localhost:5010"
-        VITE_CLERK_PUBLISHABLE_KEY: "pk_test_YnJhdmUtdnVsdHVyZS04Ni5jbGVyay5hY2NvdW50cy5kZXYk"
     ports:
       - "5173:80"
-    env_file:
-      - ./client/.env
     environment:
       - VITE_GATEWAY_URL=http://localhost:5010
     depends_on:
@@ -174,3 +209,4 @@ networks:
 
 volumes:
   grafana-storage:
+  mongodb_data:
