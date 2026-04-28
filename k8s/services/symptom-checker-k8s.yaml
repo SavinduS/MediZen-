@@ -1,57 +1,57 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: doctor-deployment
+  name: symptom-checker-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: doctor-service
+      app: symptom-checker-service
   template:
     metadata:
       labels:
-        app: doctor-service
+        app: symptom-checker-service
     spec:
       dnsConfig:
         options:
           - name: ndots
             value: "1"
       containers:
-      - name: doctor-service
-        image: savindus/medizen-doctor-service:latest
+      - name: symptom-checker-service
+        image: savindus/medizen-symptom-checker-service:latest
         ports:
-        - containerPort: 5003
+        - containerPort: 5005
         env:
         - name: PORT
           valueFrom:
             configMapKeyRef:
               name: medizen-config
-              key: DOCTOR_SERVICE_PORT
-        - name: NODE_ENV
+              key: SYMPTOM_SERVICE_PORT
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: GEMINI_API_KEY
+        - name: PATIENT_SERVICE_URL
           valueFrom:
             configMapKeyRef:
               name: medizen-config
-              key: NODE_ENV
+              key: PATIENT_SERVICE_URL
         - name: MONGO_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
-              key: MONGO_URI_DOCTOR
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: medizen-secrets
-              key: JWT_SECRET
+              key: MONGO_URI_SYMPTOM
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: doctor-service
+  name: symptom-checker-service
 spec:
   selector:
-    app: doctor-service
+    app: symptom-checker-service
   ports:
     - protocol: TCP
-      port: 5003
-      targetPort: 5003
+      port: 5005
+      targetPort: 5005
   type: ClusterIP

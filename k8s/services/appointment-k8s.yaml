@@ -12,30 +12,46 @@ spec:
       labels:
         app: appointment-service
     spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       containers:
       - name: appointment-service
         image: savindus/medizen-appointment-service:latest
         ports:
         - containerPort: 5004
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "250m"
-            memory: "256Mi"
         env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: APPOINTMENT_SERVICE_PORT
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: NODE_ENV
         - name: MONGO_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
-              key: MONGO_URI
-        envFrom:
-        - configMapRef:
-            name: appointment-config
-        - configMapRef:
-            name: medizen-config
-
+              key: MONGO_URI_APPOINTMENT
+        - name: DOCTOR_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: DOCTOR_SERVICE_URL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: JWT_SECRET
+        - name: RABBITMQ_URL
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: RABBITMQ_URL
 ---
 apiVersion: v1
 kind: Service

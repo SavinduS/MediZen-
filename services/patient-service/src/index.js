@@ -10,10 +10,15 @@ app.use(express.json());
 
 mongoose
   .connect(process.env.MONGO_URI, { dbName: "patients" })
-  .then(() => console.log("Patient DB Connected to 'patients' database"))
-  .catch((err) => console.log(err));
+  .then(() => {
+    console.log("✅ Patient DB Connected to 'patients' database");
+    const PORT = process.env.PORT || 5002;
+    app.listen(PORT, () => console.log(`🚀 Patient Service is running on port ${PORT}`));
+  })
+  .catch((err) => {
+    console.error("❌ Patient DB connection error:", err.message);
+    const PORT = process.env.PORT || 5002;
+    app.listen(PORT, () => console.log(`⚠️ Patient Service running on port ${PORT} (Database Connection Failed)`));
+  });
 
 app.use("/api/patient", patientRoutes);
-
-const PORT = process.env.PORT || 5002;
-app.listen(PORT, () => console.log(`Patient Service on ${PORT}`));

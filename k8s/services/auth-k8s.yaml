@@ -12,29 +12,36 @@ spec:
       labels:
         app: auth-service
     spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       containers:
-      - name: auth-service
-        image: savindus/medizen-auth-service:latest
-        ports:
-        - containerPort: 5001
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "250m"
-            memory: "256Mi"
-        env:
-        - name: CLERK_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: medizen-secrets
-              key: CLERK_SECRET_KEY
-        - name: MONGO_URI
-          valueFrom:
-            secretKeyRef:
-              name: medizen-secrets
-              key: MONGO_URI
+        - name: auth-service
+          image: savindus/medizen-auth-service:latest
+          ports:
+            - containerPort: 5001
+          env:
+            - name: PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: medizen-config
+                  key: AUTH_SERVICE_PORT
+            - name: CLERK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: medizen-secrets
+                  key: CLERK_SECRET_KEY
+            - name: CLERK_PUBLISHABLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: medizen-secrets
+                  key: CLERK_PUBLISHABLE_KEY
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: medizen-secrets
+                  key: MONGO_URI
 ---
 apiVersion: v1
 kind: Service

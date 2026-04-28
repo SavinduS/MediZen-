@@ -10,10 +10,16 @@ app.use(express.json());
 
 mongoose
   .connect(process.env.MONGO_URI, { dbName: "users" })
-  .then(() => console.log("Auth DB Connected"))
-  .catch((err) => console.log(err));
+  .then(() => {
+    console.log("✅ Auth DB Connected to 'users' database");
+    const PORT = process.env.PORT || 5001;
+    app.listen(PORT, () => console.log(`🚀 Auth Service is running on port ${PORT}`));
+  })
+  .catch((err) => {
+    console.error("❌ Auth DB connection error:", err.message);
+    // Start server anyway to allow health checks, but with warning
+    const PORT = process.env.PORT || 5001;
+    app.listen(PORT, () => console.log(`⚠️ Auth Service running on port ${PORT} (Database Connection Failed)`));
+  });
 
 app.use("/api/auth", authRoutes);
-
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Auth Service on ${PORT}`));

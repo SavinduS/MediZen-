@@ -4,45 +4,41 @@ metadata:
   name: medizen-config
   namespace: default
 data:
-  # Admin Service
-  ADMIN_SERVICE_PORT: "5009"
-  AUTH_SERVICE_URL: "http://auth-service:5001/api/auth"
-  PATIENT_SERVICE_URL: "http://patient-service:5002"
+  # General
+  NODE_ENV: "development"
 
-  # Payment Service
+  # Port configurations
+  AUTH_SERVICE_PORT: "5001"
+  PATIENT_SERVICE_PORT: "5002"
+  DOCTOR_SERVICE_PORT: "5003"
+  APPOINTMENT_SERVICE_PORT: "5004"
+  SYMPTOM_SERVICE_PORT: "5005"
+  TELEMEDICINE_SERVICE_PORT: "5006"
   PAYMENT_SERVICE_PORT: "5007"
-  APPOINTMENT_SERVICE_URL: "http://appointment-service:5004/api/appointments"
-
-  # Notification Service
   NOTIFICATION_SERVICE_PORT: "5008"
-  EMAIL_USER: "medizen.system@example.com"
-  TWILIO_SID: "YOUR_TWILIO_SID"
-  TWILIO_PHONE_NUMBER: "YOUR_TWILIO_PHONE_NUMBER"
-  RABBITMQ_URL: "amqp://rabbitmq-service:5672"
+  ADMIN_SERVICE_PORT: "5009"
+  GATEWAY_PORT: "5010"
 
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: doctor-config
-  namespace: default
-data:
-  PORT: "5003"
+  # Internal Service URLs
+  AUTH_SERVICE_URL: "http://auth-service:5001"
+  PATIENT_SERVICE_URL: "http://patient-service:5002"
+  DOCTOR_SERVICE_URL: "http://doctor-service:5003"
+  APPOINTMENT_SERVICE_URL: "http://appointment-service:5004"
+  SYMPTOM_SERVICE_URL: "http://symptom-checker-service:5005"
+  TELEMEDICINE_SERVICE_URL: "http://telemedicine-service:5006"
+  PAYMENT_SERVICE_URL: "http://payment-service:5007"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:5008"
+  ADMIN_SERVICE_URL: "http://admin-service:5009"
+  
+  # Infrastructure
+  RABBITMQ_URL_INTERNAL: "amqp://rabbitmq-service:5672"
+  RABBITMQ_QUEUE: "notifications_queue"
+  
+  # External URLs
+  VITE_GATEWAY_URL: "http://api-gateway:5010"
 
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: appointment-config
-  namespace: default
-data:
-  PORT: "5004"
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: telemedicine-config
-  namespace: default
-data:
-  PORT: "5006"
+  # Other
+  VONAGE_FROM: "MediZen"
+  SMTP_HOST: "smtp.mailtrap.io"
+  SMTP_PORT: "587"
+  SMTP_FROM: "noreply@medizen.com"

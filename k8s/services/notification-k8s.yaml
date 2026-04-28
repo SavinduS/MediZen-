@@ -12,54 +12,81 @@ spec:
       labels:
         app: notification-service
     spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       containers:
       - name: notification-service
         image: savindus/medizen-notification-service:latest
         ports:
         - containerPort: 5008
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "250m"
-            memory: "256Mi"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 5008
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 5008
-          initialDelaySeconds: 5
-          periodSeconds: 10
         env:
-        - name: MONGO_URI
+        - name: PORT
           valueFrom:
-            secretKeyRef:
-              name: medizen-secrets
-              key: MONGO_URI
+            configMapKeyRef:
+              name: medizen-config
+              key: NOTIFICATION_SERVICE_PORT
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: NODE_ENV
         - name: MONGODB_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
-              key: MONGO_URI
-        - name: EMAIL_PASS
+              key: MONGO_URI_NOTIFICATION
+        - name: VONAGE_API_KEY
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
-              key: EMAIL_PASS
-        - name: TWILIO_AUTH_TOKEN
+              key: VONAGE_API_KEY
+        - name: VONAGE_API_SECRET
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
-              key: TWILIO_AUTH_TOKEN
-        envFrom:
-        - configMapRef:
-            name: medizen-config
+              key: VONAGE_API_SECRET
+        - name: VONAGE_FROM
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: VONAGE_FROM
+        - name: SMTP_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: SMTP_HOST
+        - name: SMTP_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: SMTP_PORT
+        - name: SMTP_USER
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: SMTP_USER
+        - name: SMTP_PASS
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: SMTP_PASS
+        - name: SMTP_FROM
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: SMTP_FROM
+        - name: RABBITMQ_URL
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: RABBITMQ_URL
+        - name: RABBITMQ_QUEUE
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: RABBITMQ_QUEUE
 ---
 apiVersion: v1
 kind: Service

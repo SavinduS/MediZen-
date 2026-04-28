@@ -1,4 +1,3 @@
-# Deployment: Handles the pods for Telemedicine (Video) Service
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -13,44 +12,47 @@ spec:
       labels:
         app: telemedicine-service
     spec:
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       containers:
       - name: telemedicine-service
         image: savindus/medizen-telemedicine-service:latest
         ports:
         - containerPort: 5006
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "250m"
-            memory: "256Mi"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 5006
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 5006
-          initialDelaySeconds: 5
-          periodSeconds: 10
         env:
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: TELEMEDICINE_SERVICE_PORT
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: NODE_ENV
         - name: MONGO_URI
           valueFrom:
             secretKeyRef:
               name: medizen-secrets
-              key: MONGO_URI
-        envFrom:
-        - configMapRef:
-            name: telemedicine-config # Environment variables set through ConfigMap
-        - configMapRef:
-            name: medizen-config
-
+              key: MONGO_URI_SESSION
+        - name: AGORA_APP_ID
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: AGORA_APP_ID
+        - name: AGORA_APP_CERTIFICATE
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: AGORA_APP_CERTIFICATE
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: JWT_SECRET
 ---
-# Service: Internal network access for Telemedicine Service
 apiVersion: v1
 kind: Service
 metadata:

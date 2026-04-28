@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: client-deployment
-  namespace: default
 spec:
   replicas: 1
   selector:
@@ -14,49 +13,31 @@ spec:
         app: client
     spec:
       containers:
-        - name: client
-          image: savindus/medizen-client:latest
-          ports:
-            - containerPort: 80
-          resources:
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
-            requests:
-              cpu: "250m"
-              memory: "256Mi"
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 80
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 80
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          # ⚠️  IMPORTANT: VITE_* variables are baked into the JS bundle at BUILD TIME.
-          # They cannot be changed at runtime via k8s env vars.
-          # Before pushing the image, rebuild it with the external api-gateway IP:
-          #
-          #   docker build \
-          #     --build-arg VITE_GATEWAY_URL=http://<api-gateway-EXTERNAL-IP>:5010 \
-          #     --build-arg VITE_CLERK_PUBLISHABLE_KEY=pk_test_YnJhdmUtdnVsdHVyZS04Ni5jbGVyay5hY2NvdW50cy5kZXYk \
-          #     -t savindus/medizen-client:latest ./client
-
+      - name: client
+        image: savindus/medizen-client:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: VITE_CLERK_PUBLISHABLE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: medizen-secrets
+              key: CLERK_PUBLISHABLE_KEY
+        - name: VITE_GATEWAY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: medizen-config
+              key: VITE_GATEWAY_URL
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: client-service
-  namespace: default
 spec:
-  type: LoadBalancer
   selector:
     app: client
   ports:
     - protocol: TCP
       port: 80
       targetPort: 80
+  type: LoadBalancer
