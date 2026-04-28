@@ -27,6 +27,7 @@ services:
       - ./services/auth-service/.env
     environment:
       - MONGO_URI=mongodb://mongodb:27017/auth_db
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
     depends_on:
       - mongodb
     networks:
@@ -40,6 +41,10 @@ services:
       - ./services/patient-service/.env
     environment:
       - MONGO_URI=mongodb://mongodb:27017/patient_db
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+      - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+      - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
     depends_on:
       - mongodb
     networks:
@@ -53,6 +58,8 @@ services:
       - ./services/doctor-service/.env
     environment:
       - MONGO_URI=mongodb://mongodb:27017/doctor_db
+      - DOCTOR_MONGO_URI=mongodb://mongodb:27017/doctor_db
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
     depends_on:
       - mongodb
     networks:
@@ -82,6 +89,7 @@ services:
       - ./services/symptom-checker-service/.env
     environment:
       - MONGO_URI=mongodb://mongodb:27017/symptom_db
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - PATIENT_SERVICE_URL=http://api-gateway:5010
     depends_on:
       - mongodb
@@ -96,6 +104,8 @@ services:
       - ./services/telemedicine-service/.env
     environment:
       - MONGO_URI=mongodb://mongodb:27017/telemedicine_db
+      - AGORA_APP_ID=${AGORA_APP_ID}
+      - AGORA_APP_CERTIFICATE=${AGORA_APP_CERTIFICATE}
     depends_on:
       - mongodb
     networks:
@@ -109,6 +119,8 @@ services:
       - ./services/payment-service/.env
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/payment_db
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
       - mongodb
@@ -124,6 +136,10 @@ services:
       - ./services/notification-service/.env
     environment:
       - MONGODB_URI=mongodb://mongodb:27017/notification_db
+      - EMAIL_USER=${EMAIL_USER}
+      - EMAIL_PASS=${EMAIL_PASS}
+      - TWILIO_SID=${TWILIO_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
       - RABBITMQ_URL=amqp://rabbitmq
     depends_on:
       - mongodb
@@ -140,6 +156,7 @@ services:
     environment:
       - MONGO_URI=mongodb://mongodb:27017/admin_db
       - MONGODB_URI=mongodb://mongodb:27017/admin_db
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - DOCTOR_SERVICE_URL=http://api-gateway:5010
       - AUTH_SERVICE_URL=http://api-gateway:5010
     depends_on:
@@ -170,36 +187,12 @@ services:
     build: 
       context: ./client
       args:
-        VITE_GATEWAY_URL: "http://localhost:5010"
+        VITE_GATEWAY_URL: ${VITE_GATEWAY_URL:-http://localhost:5010}
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY}
     ports:
       - "5173:80"
-    environment:
-      - VITE_GATEWAY_URL=http://localhost:5010
     depends_on:
       - api-gateway
-    networks:
-      - medizen-network
-
-  # Monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    networks:
-      - medizen-network
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-storage:/var/lib/grafana
-    depends_on:
-      - prometheus
     networks:
       - medizen-network
 
