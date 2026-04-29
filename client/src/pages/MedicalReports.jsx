@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import axios from "axios";
 import {
   Upload,
   FileText,
@@ -14,6 +13,12 @@ import {
   Search,
   Calendar,
 } from "lucide-react";
+import {
+  fetchMedicalReports,
+  fetchPatientProfile,
+  uploadMedicalReport,
+  deleteMedicalReport,
+} from "../services/api";
 
 const MONTH_NAMES = [
   "January",
@@ -117,9 +122,7 @@ const MedicalReports = () => {
       const token = await getToken();
       if (!token) return;
 
-      const res = await axios.get("http://localhost:5002/api/patient/reports", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetchMedicalReports(token);
       setReports(res.data);
     } catch (error) {
       console.error("Error fetching reports:", error);
@@ -141,12 +144,7 @@ const MedicalReports = () => {
         params.append("lastName", user.lastName || "");
       }
 
-      const res = await axios.get(
-        `http://localhost:5002/api/patient/profile?${params.toString()}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const res = await fetchPatientProfile(token, params);
       setPatientProfile(res.data);
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -193,12 +191,7 @@ const MedicalReports = () => {
       formData.append("report", file);
 
       const token = await getToken();
-      await axios.post("http://localhost:5002/api/patient/reports", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      await uploadMedicalReport(formData, token);
 
       setFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -221,9 +214,7 @@ const MedicalReports = () => {
     setDeleting(true);
     try {
       const token = await getToken();
-      await axios.delete(`http://localhost:5002/api/patient/reports/${deleteTargetId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await deleteMedicalReport(deleteTargetId, token);
       setDeleteTargetId(null);
       await fetchReports();
       setToast({ type: "success", message: "Report removed." });
