@@ -41,7 +41,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: medizen-secrets
-                  key: MONGO_URI
+                  key: MONGO_URI_AUTH
 ---
 apiVersion: v1
 kind: Service

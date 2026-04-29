@@ -31,7 +31,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: medizen-secrets
-                  key: MONGO_URI
+                  key: MONGO_URI_PATIENT
             - name: CLERK_SECRET_KEY
               valueFrom:
                 secretKeyRef:
