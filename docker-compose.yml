@@ -174,7 +174,8 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        - VITE_GATEWAY_URL=http://localhost:5010
+        - VITE_GATEWAY_URL=${VITE_GATEWAY_URL}
+        - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
     container_name: medizen-client
     ports:
       - "5173:80"
