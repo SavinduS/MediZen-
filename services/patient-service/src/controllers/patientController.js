@@ -2,18 +2,42 @@ const Patient = require("../models/Patient");
 const Report = require("../models/Report");
 const { cloudinary } = require("../config/cloudinary");
 
+const getAuthenticatedClerkId = (req) => {
+  return (
+    req.auth?.userId ||
+    req.auth?.sessionClaims?.sub ||
+    req.headers["x-clerk-user-id"] ||
+    null
+  );
+};
+
+const requireClerkId = (req, res) => {
+  const clerkId = getAuthenticatedClerkId(req);
+  if (!clerkId) {
+    res.status(401).json({
+      error: "Unauthorized: missing Clerk user context",
+      hint: "Ensure Authorization header is forwarded by API Gateway/Ingress",
+    });
+    return null;
+  }
+  return clerkId;
+};
+
 const getProfile = async (req, res) => {
+  const clerkId = requireClerkId(req, res);
+  if (!clerkId) return;
+
   try {
     // 1. Check DB
-    let profile = await Patient.findOne({ clerkId: req.auth.userId });
+    let profile = await Patient.findOne({ clerkId });
 
     // 2. If it exists but firstName is missing OR if it doesn't exist,
     // we take name from the request (sent by frontend) or just update it
     if (req.query.firstName && req.query.lastName) {
       profile = await Patient.findOneAndUpdate(
-        { clerkId: req.auth.userId },
+        { clerkId },
         {
-          clerkId: req.auth.userId,
+          clerkId,
           firstName: req.query.firstName,
           lastName: req.query.lastName,
         },
@@ -28,10 +52,13 @@ const getProfile = async (req, res) => {
 };
 
 const updateProfile = async (req, res) => {
+  const clerkId = requireClerkId(req, res);
+  if (!clerkId) return;
+
   try {
     const updated = await Patient.findOneAndUpdate(
-      { clerkId: req.auth.userId },
-      { ...req.body, clerkId: req.auth.userId },
+      { clerkId },
+      { ...req.body, clerkId },
       { upsert: true, new: true },
     );
     res.json(updated);
@@ -41,6 +68,9 @@ const updateProfile = async (req, res) => {
 };
 
 const uploadReport = async (req, res) => {
+  const clerkId = requireClerkId(req, res);
+  if (!clerkId) return;
+
   try {
     // Cloudinary result fields are available in req.file
     // format, resource_type, original_filename, secure_url (path), etc.
@@ -54,7 +84,7 @@ const uploadReport = async (req, res) => {
     const resourceType = req.file.resource_type || (isPDF ? "raw" : "image");
 
     const newReport = new Report({
-      patientClerkId: req.auth.userId,
+      patientClerkId: clerkId,
       fileName: req.body.fileName || req.file.originalname || "Medical Report",
       fileUrl: req.file.path, // Cloudinary URL (should be secure_url)
       publicId: req.file.filename, // Cloudinary public_id (includes folder)
@@ -68,8 +98,11 @@ const uploadReport = async (req, res) => {
 };
 
 const getReports = async (req, res) => {
+  const clerkId = requireClerkId(req, res);
+  if (!clerkId) return;
+
   try {
-    const reports = await Report.find({ patientClerkId: req.auth.userId }).sort({
+    const reports = await Report.find({ patientClerkId: clerkId }).sort({
       uploadedAt: -1,
     });
     res.json(reports);
@@ -79,10 +112,13 @@ const getReports = async (req, res) => {
 };
 
 const deleteReport = async (req, res) => {
+  const clerkId = requireClerkId(req, res);
+  if (!clerkId) return;
+
   try {
     const report = await Report.findOne({
       _id: req.params.id,
-      patientClerkId: req.auth.userId,
+      patientClerkId: clerkId,
     });
 
     if (!report) {
