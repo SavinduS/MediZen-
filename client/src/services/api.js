@@ -29,8 +29,11 @@ export const fetchUserByClerkId = (clerkId) =>
   authAPI.get(`/users/${clerkId}`);
 
 // --- PATIENT SERVICE CALLS (PORT 5002) ---
-export const fetchPatientProfile = (token) =>
-  patientAPI.get('/profile', { headers: { Authorization: `Bearer ${token}` } });
+export const fetchPatientProfile = (token, params) =>
+  patientAPI.get('/profile', {
+    params,
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
 export const fetchPatientInternalProfile = (clerkId) =>
   patientAPI.get(`/internal/${clerkId}`);
@@ -51,6 +54,9 @@ export const fetchMedicalReports = (token) =>
 
 export const fetchPatientReportsById = (patientId) => 
   patientAPI.get(`/reports/${patientId}`);
+
+export const deleteMedicalReport = (reportId, token) =>
+  patientAPI.delete(`/reports/${reportId}`, { headers: { Authorization: `Bearer ${token}` } });
 
 // --- DOCTOR SERVICE CALLS (PORT 5003) ---
 export const fetchDoctors = () => doctorAPI.get('/');

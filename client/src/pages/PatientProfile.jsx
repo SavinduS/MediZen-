@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import axios from "axios";
 import {
   User,
   Calendar,
@@ -12,6 +11,7 @@ import {
   XCircle,
   X,
 } from "lucide-react";
+import { fetchPatientProfile, updatePatientProfile } from "../services/api";
 
 const inputClass =
   "w-full mt-1.5 px-3 py-2.5 sm:py-2 text-sm sm:text-base border border-slate-200 rounded-xl bg-white text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-500";
@@ -59,12 +59,7 @@ const PatientProfile = () => {
         params.append("lastName", user.lastName || "");
       }
 
-      const res = await axios.get(
-        `http://localhost:5002/api/patient/profile?${params.toString()}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      const res = await fetchPatientProfile(token, params);
       if (res.data?.clerkId) setFormData(res.data);
     } catch (err) {
       console.error(err);
@@ -83,9 +78,7 @@ const PatientProfile = () => {
     setSaving(true);
     try {
       const token = await getToken();
-      await axios.put("http://localhost:5002/api/patient/profile", formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await updatePatientProfile(formData, token);
       setToast({ type: "success", message: "Profile updated successfully." });
     } catch (err) {
       console.error(err);
